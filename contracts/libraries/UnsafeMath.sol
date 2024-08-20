@@ -38,6 +38,7 @@ library UnsafeMath {
         unchecked { return a * b; }
     }
 
+    /// @notice Calculate `a / b` without overflow check
     function divU256(uint256 a, uint256 b) internal pure returns (uint256) {
         // prettier-ignore
         unchecked { return a / b; }
