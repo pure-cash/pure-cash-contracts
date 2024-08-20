@@ -1,0 +1,83 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PositionRouter2 #updateDelayValues update delay values 1`] = `35921`;
+
+exports[`PositionRouter2 #updateExecutionGasLimit update execution gas limit 1`] = `33801`;
+
+exports[`PositionRouter2 #updateMinExecutionFee update min execution fee 1`] = `35578`;
+
+exports[`PositionRouter2 #updatePositionExecutor update position executor from false to false 1`] = `33358`;
+
+exports[`PositionRouter2 #updatePositionExecutor update position executor from false to true 1`] = `53270`;
+
+exports[`PositionRouter2 #updatePositionExecutor update position executor from true to false 1`] = `31358`;
+
+exports[`PositionRouter2 #updatePositionExecutor update position executor from true to true 1`] = `33370`;
+
+exports[`PositionRouter2 BurnLPT #cancelBurnLPT cancel when request exists 1`] = `67217`;
+
+exports[`PositionRouter2 BurnLPT #cancelBurnLPT cancel when request not exists 1`] = `27398`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPT createBurnLPT with permitData again 1`] = `68663`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPT createBurnLPT without permitData again 1`] = `71782`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPT first createBurnLPT with permitData 1`] = `137866`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPT first createBurnLPT without permitData 1`] = `88882`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPTReceivePUSD createBurnLPTReceivePUSD with permitData again 1`] = `72220`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPTReceivePUSD createBurnLPTReceivePUSD with permitData again 2`] = `69101`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPTReceivePUSD first createBurnLPTReceivePUSD with permitData 1`] = `138304`;
+
+exports[`PositionRouter2 BurnLPT #createBurnLPTReceivePUSD first createBurnLPTReceivePUSD without permitData 1`] = `89320`;
+
+exports[`PositionRouter2 BurnLPT #executeBurnLPT execute when request not exists 1`] = `27292`;
+
+exports[`PositionRouter2 BurnLPT #executeBurnLPT execute when the market is not weth 1`] = `75655`;
+
+exports[`PositionRouter2 BurnLPT #executeBurnLPT execute when the market is weth 1`] = `27268`;
+
+exports[`PositionRouter2 BurnLPT #executeOrCancelBurnLPT execute burn LPT 1`] = `77434`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when executor cancel and market is not weth 1`] = `51808`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when executor cancel and market is weth 1`] = `59871`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when executor cancel and payPUSD is true 1`] = `54239`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when request not exists 1`] = `26869`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when request owner calls and market is not weth 1`] = `51865`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when request owner calls and market is weth 1`] = `57428`;
+
+exports[`PositionRouter2 MintLPT #cancelMintLPT cancel when request owner calls and payPUSD is true 1`] = `54296`;
+
+exports[`PositionRouter2 MintLPT #createMintLPT createMintLPT with permitData again 1`] = `73015`;
+
+exports[`PositionRouter2 MintLPT #createMintLPT createMintLPT without permitData again 1`] = `76134`;
+
+exports[`PositionRouter2 MintLPT #createMintLPT first createMintLPT with permitData 1`] = `142196`;
+
+exports[`PositionRouter2 MintLPT #createMintLPT first createMintLPT without permitData 1`] = `93234`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTETH createMintLPTETH again 1`] = `67392`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTETH first createMintLPTETH 1`] = `84492`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD createMintLPTPayPUSD with permitData again 1`] = `81397`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD createMintLPTPayPUSD without permitData again 1`] = `81397`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD first createMintLPTPayPUSD with permitData 1`] = `158486`;
+
+exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD first createMintLPTPayPUSD without permitData 1`] = `98497`;
+
+exports[`PositionRouter2 MintLPT #executeMintLPT execute mint LPT 1`] = `58299`;
+
+exports[`PositionRouter2 MintLPT #executeMintLPT execute when request is not exists 1`] = `27026`;
+
+exports[`PositionRouter2 MintLPT #executeOrCancelMintLPT execute mint LPT 1`] = `60188`;

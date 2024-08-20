@@ -1,0 +1,22 @@
+[profile.default]
+src = 'contracts'
+out = 'foundry-out'
+libs = ['node_modules', 'lib']
+test = 'test/foundry'
+cache_path = 'forge-cache'
+auto_detect_solc = true
+optimizer = true
+optimizer_runs = 100000000
+extra_output = ['storageLayout']
+bytecode_hash = 'none'
+build_info = true
+via_ir = true
+evm_version = 'cancun'
+ast = true
+ffi = true
+fs_permissions = [{ access = "read", path = "./out" }]
+
+[fuzz]
+runs = 10000
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

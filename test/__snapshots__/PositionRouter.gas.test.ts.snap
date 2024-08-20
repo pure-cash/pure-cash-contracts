@@ -1,0 +1,157 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`PositionRouter #updateDelayValues update delay values 1`] = `36075`;
+
+exports[`PositionRouter #updateExecutionGasLimit update execution gas limit 1`] = `33779`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 1`] = `35766`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 2`] = `35766`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 3`] = `35778`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 4`] = `35778`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 5`] = `35778`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 6`] = `35778`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 7`] = `35778`;
+
+exports[`PositionRouter #updateMinExecutionFee update min execution fee 8`] = `35778`;
+
+exports[`PositionRouter #updatePositionExecutor update position executor from false to false 1`] = `33611`;
+
+exports[`PositionRouter #updatePositionExecutor update position executor from false to true 1`] = `53523`;
+
+exports[`PositionRouter #updatePositionExecutor update position executor from true to false 1`] = `31611`;
+
+exports[`PositionRouter #updatePositionExecutor update position executor from true to true 1`] = `33623`;
+
+exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel burn PUSD 1`] = `54749`;
+
+exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel when request not exists 1`] = `27391`;
+
+exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD with permitData again 1`] = `78375`;
+
+exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD without permitData again 1`] = `81521`;
+
+exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD with permitData 1`] = `133526`;
+
+exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD without permitData 1`] = `98609`;
+
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and market is not weth 1`] = `95299`;
+
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and the market is weth 1`] = `146881`;
+
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is not weth 1`] = `95307`;
+
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is weth 1`] = `146888`;
+
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when request not exists 1`] = `27326`;
+
+exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD cancel request if execution reverted 1`] = `67032`;
+
+exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD execute request if execution passed 1`] = `77332`;
+
+exports[`PositionRouter DecreasePosition #cancelDecreasePosition cancel when executor cancel 1`] = `38141`;
+
+exports[`PositionRouter DecreasePosition #cancelDecreasePosition cancel when request not exists 1`] = `27057`;
+
+exports[`PositionRouter DecreasePosition #cancelDecreasePosition cancel when request owner calls 1`] = `38198`;
+
+exports[`PositionRouter DecreasePosition #createDecreasePosition createDecreasePosition again 1`] = `52016`;
+
+exports[`PositionRouter DecreasePosition #createDecreasePosition first createDecreasePosition 1`] = `52016`;
+
+exports[`PositionRouter DecreasePosition #createDecreasePositionReceivePUSD createDecreasePositionReceivePUSD again 1`] = `51884`;
+
+exports[`PositionRouter DecreasePosition #createDecreasePositionReceivePUSD first createDecreasePositionReceivePUSD 1`] = `51884`;
+
+exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when request is not exists 1`] = `27597`;
+
+exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when the market is weth 1`] = `107989`;
+
+exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when receivePUSD is true 1`] = `81624`;
+
+exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when the market is not weth 1`] = `53373`;
+
+exports[`PositionRouter DecreasePosition #executeOrCancelDecreasePosition cancel request if execution reverted 1`] = `50642`;
+
+exports[`PositionRouter DecreasePosition #executeOrCancelDecreasePosition execute request if execution passed 1`] = `55240`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is not weth 1`] = `51612`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is weth 1`] = `59747`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and payPUSD is true 1`] = `54115`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request not exists 1`] = `26685`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is not weth 1`] = `26673`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is weth 1`] = `57304`;
+
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and payPUSD is true 1`] = `54172`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePosition createIncreasePosition with permitData again 1`] = `73014`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePosition createIncreasePosition without permitData again 1`] = `76133`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePosition first createIncreasePosition with permitData 1`] = `122230`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePosition first createIncreasePosition without permitData 1`] = `93233`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionETH createIncreasePositionETH again 1`] = `67060`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionETH first createIncreasePositionETH 1`] = `84160`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD with permitData again 1`] = `78509`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD without permitData again 1`] = `81655`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD with permitData 1`] = `133672`;
+
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD without permitData 1`] = `98755`;
+
+exports[`PositionRouter IncreasePosition #executeIncreasePosition execute when request is exists 1`] = `63234`;
+
+exports[`PositionRouter IncreasePosition #executeIncreasePosition execute when request is not exists 1`] = `26988`;
+
+exports[`PositionRouter IncreasePosition #executeOrCancelIncreasePosition cancel request if execution reverted 1`] = `63296`;
+
+exports[`PositionRouter IncreasePosition #executeOrCancelIncreasePosition execute request if execution passed 1`] = `64727`;
+
+exports[`PositionRouter MintPUSD #cancelMintPUSD cancel when executor cancel and market is not weth 1`] = `52120`;
+
+exports[`PositionRouter MintPUSD #cancelMintPUSD cancel when executor cancel and market is weth 1`] = `27246`;
+
+exports[`PositionRouter MintPUSD #cancelMintPUSD cancel when request not exists 1`] = `27246`;
+
+exports[`PositionRouter MintPUSD #cancelMintPUSD cancel when request owner calls 1`] = `27258`;
+
+exports[`PositionRouter MintPUSD #createMintPUSD createMintPUSD with permitData again 1`] = `73490`;
+
+exports[`PositionRouter MintPUSD #createMintPUSD createMintPUSD without permitData again 1`] = `76609`;
+
+exports[`PositionRouter MintPUSD #createMintPUSD first createMintPUSD with permitData 1`] = `122694`;
+
+exports[`PositionRouter MintPUSD #createMintPUSD first createMintPUSD without permitData 1`] = `93697`;
+
+exports[`PositionRouter MintPUSD #createMintPUSDETH createMintPUSDETH again 1`] = `67493`;
+
+exports[`PositionRouter MintPUSD #createMintPUSDETH first createMintPUSDETH 1`] = `84581`;
+
+exports[`PositionRouter MintPUSD #executeMintPUSD execute when request is not exists 1`] = `26906`;
+
+exports[`PositionRouter MintPUSD #executeMintPUSD execute when the exactIn is false and market is not weth 1`] = `67570`;
+
+exports[`PositionRouter MintPUSD #executeMintPUSD execute when the exactIn is false and market is weth 1`] = `95468`;
+
+exports[`PositionRouter MintPUSD #executeMintPUSD execute when the exactIn is true and market is not weth 1`] = `70362`;
+
+exports[`PositionRouter MintPUSD #executeMintPUSD execute when the exactIn is true and market is weth 1`] = `95460`;
+
+exports[`PositionRouter MintPUSD #executeOrCancelMintPUSD cancel request if execution reverted 1`] = `63420`;
+
+exports[`PositionRouter MintPUSD #executeOrCancelMintPUSD execute request if execution passed 1`] = `68968`;

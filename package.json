@@ -1,0 +1,55 @@
+{
+    "name": "@purecash/pure-cash-contracts",
+    "version": "0.0.1",
+    "author": "Purecash",
+    "license": "BUSL-1.1",
+    "description": "Pure Cash contracts",
+    "keywords": [
+        "puercash",
+        "stablecoin",
+        "usd",
+        "DeFi"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:pure-cash/pure-cash-contracts.git"
+    },
+    "files": [
+        "contracts/**/*.sol",
+        "!contracts/test/*",
+        "artifacts/contracts/**/*.json",
+        "!artifacts/contracts/test/**/*"
+    ],
+    "bugs": {
+        "url": "https://github.com/pure-cash/pure-cash-contracts/issues"
+    },
+    "scripts": {
+        "prepare": "husky",
+        "test": "npx hardhat test",
+        "forge:test": "forge test",
+        "build": "npx hardhat compile",
+        "lint": "npx prettier --check .",
+        "lint:fix": "npx prettier --write ."
+    },
+    "devDependencies": {
+        "@nomicfoundation/hardhat-ignition-ethers": "^0.15.5",
+        "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+        "@nomicfoundation/hardhat-verify": "^2.0.7",
+        "@nomiclabs/hardhat-solhint": "^3.0.1",
+        "decimal.js": "^10.4.3",
+        "dotenv": "^16.3.1",
+        "hardhat": "^2.19.3",
+        "hardhat-contract-sizer": "^2.10.0",
+        "husky": "^9.0.11",
+        "mocha-chai-jest-snapshot": "^1.1.4",
+        "prettier": "^3.1.1",
+        "prettier-plugin-solidity": "^1.2.0"
+    },
+    "dependencies": {
+        "@1inch/solidity-utils": "^5.2.1",
+        "@openzeppelin/contracts": "^5.0.1",
+        "@openzeppelin/contracts-upgradeable": "^5.0.2",
+        "@openzeppelin/hardhat-upgrades": "^3.1.0",
+        "solady": "^0.0.232"
+    }
+}

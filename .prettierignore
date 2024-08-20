@@ -1,0 +1,25 @@
+.idea
+.vscode
+.DS_Store
+
+node_modules
+.env
+coverage
+coverage.json
+typechain
+typechain-types
+deployments
+.openzeppelin
+
+
+# Hardhat files
+cache
+artifacts
+
+# foundry files
+out
+foundry-out
+forge-cache
+lib
+LICENSE
+
