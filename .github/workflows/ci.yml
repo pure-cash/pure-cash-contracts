@@ -11,7 +11,7 @@ on:
             - next
 
 jobs:
-    lint:
+    ci:
         runs-on: ubuntu-latest
 
         strategy:
