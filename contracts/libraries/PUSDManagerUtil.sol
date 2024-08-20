@@ -327,14 +327,12 @@ library PUSDManagerUtil {
         );
 
         uint96 receiveAmount;
+        uint64 pusdDebtDelta;
         unchecked {
             int256 receiveAmountInt = int256(uint256(_param.sizeDelta)) - int256(uint256(tradingFee)) + realizedPnL;
             if (receiveAmountInt < 0) revert IMarketErrors.NegativeReceiveAmount(receiveAmountInt);
             receiveAmount = uint256(receiveAmountInt).toUint96();
-        }
 
-        uint64 pusdDebtDelta;
-        unchecked {
             pusdDebtDelta = uint64(
                 Math.ceilDiv(uint256(_param.sizeDelta) * positionCache.totalSupply, positionCache.size)
             );
