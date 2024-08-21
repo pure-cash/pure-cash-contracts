@@ -29,7 +29,7 @@ contract StakingUpgradeable is IStaking, GovernableUpgradeable {
         if (balanceAfter > maxStakedLimit[_token]) revert ExceededMaxStakedLimit(_amount);
 
         _token.safePermit(address(this), _permitData);
-        IERC20(_token).safeTransferFrom(msg.sender, _receiver, _amount);
+        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
         balances[_token] = balanceAfter;
         unchecked {
             balancesPerAccount[_receiver][_token] += _amount;

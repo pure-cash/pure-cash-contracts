@@ -44,13 +44,20 @@ contract BalanceRateBalancerTest is Test {
             IMarketManager(address(marketManager)),
             IWETHMinimum(address(weth))
         );
-        IPositionRouterCommon.ExecutionFeeType[]
-            memory executionFeeTypes = new IPositionRouterCommon.ExecutionFeeType[](1);
-        executionFeeTypes[0] = IPositionRouterCommon.ExecutionFeeType.IncreaseBalanceRate;
-        uint256[] memory minExecutionFees = new uint256[](1);
-        minExecutionFees[0] = 0;
+        IPositionRouterCommon.EstimatedGasLimitType[]
+            memory estimatedGasLimitTypes = new IPositionRouterCommon.EstimatedGasLimitType[](1);
+        estimatedGasLimitTypes[0] = IPositionRouterCommon.EstimatedGasLimitType.IncreaseBalanceRate;
+        uint256[] memory estimatedGasLimits = new uint256[](1);
+        estimatedGasLimits[0] = 0;
 
-        balancer = new BalanceRateBalancer(govImpl, marketManager, usd, plugin, executionFeeTypes, minExecutionFees);
+        balancer = new BalanceRateBalancer(
+            govImpl,
+            marketManager,
+            usd,
+            plugin,
+            estimatedGasLimitTypes,
+            estimatedGasLimits
+        );
         balancer.updatePositionExecutor(executor, true);
     }
 
@@ -62,7 +69,8 @@ contract BalanceRateBalancerTest is Test {
     }
 
     function test_createIncreaseBalanceRate_revertIf_insufficientExecutionFee() public {
-        balancer.updateMinExecutionFee(IPositionRouterCommon.ExecutionFeeType.IncreaseBalanceRate, 1e17);
+        vm.txGasPrice(1);
+        balancer.updateEstimatedGasLimit(IPositionRouterCommon.EstimatedGasLimitType.IncreaseBalanceRate, 1e17);
 
         vm.expectRevert(abi.encodeWithSelector(IPositionRouterCommon.InsufficientExecutionFee.selector, 0, 1e17));
         balancer.createIncreaseBalanceRate(IERC20(address(weth)), dai, 1000e6, new address[](0), new bytes[](0));
@@ -205,7 +213,7 @@ contract BalanceRateBalancerTest is Test {
 
         vm.prank(executor);
         vm.expectEmit();
-        emit IBalanceRateBalancer.IncreaseBalanceRateExecuted(keccak256(abi.encode(param)), payable(executor));
+        emit IBalanceRateBalancer.IncreaseBalanceRateExecuted(keccak256(abi.encode(param)), payable(executor), 0);
         balancer.executeOrCancelIncreaseBalanceRate(param, true, payable(executor));
         assertEq(marketManager.psmCollateralStates(dai).balance, 10000e18);
     }

@@ -11,13 +11,20 @@ import {bytecode} from "../artifacts/contracts/core/LPToken.sol/LPToken.json";
 import {keccak256} from "@ethersproject/keccak256";
 import {gasUsed} from "./shared/Gas";
 import {AddressZero} from "@ethersproject/constants";
-import {positionRouter2ExecutionFeeTypes, positionRouterExecutionFeeTypes} from "./shared/PositionRouterFixture";
+import {
+    positionRouter2EstimatedGasLimitTypes,
+    positionRouterEstimatedGasLimitTypes,
+} from "./shared/PositionRouterFixture";
 
 use(jestSnapshotPlugin());
 
 describe("MarketManager", () => {
     const PRICE = 29899096567035; // 2989.9096567035
-    const MIN_EXECUTION_FEE = ethers.parseUnits("0.0003", "ether");
+
+    const DEFAULT_ESTIMATED_GAS_LIMIT = 500_000n;
+    const GAS_PRICE = ethers.parseUnits("1", "gwei");
+    const DEFAULT_EXECUTION_FEE = GAS_PRICE * DEFAULT_ESTIMATED_GAS_LIMIT;
+
     const CFG = {
         minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
         maxLeveragePerPosition: 10,
@@ -46,7 +53,7 @@ describe("MarketManager", () => {
 
         const feeDistributor = (await upgrades.deployProxy(
             await ethers.getContractFactory("FeeDistributorUpgradeable"),
-            [owner.address, parsePercent("83.33333%")],
+            [owner.address, parsePercent("83.33333%"), parsePercent("0%")],
             {kind: "uups"},
         )) as unknown as FeeDistributorUpgradeable;
 
@@ -94,8 +101,8 @@ describe("MarketManager", () => {
             await pusd.getAddress(),
             await marketManager.getAddress(),
             await weth.getAddress(),
-            await positionRouterExecutionFeeTypes(),
-            Array((await positionRouterExecutionFeeTypes()).length).fill(MIN_EXECUTION_FEE),
+            await positionRouterEstimatedGasLimitTypes(),
+            Array((await positionRouterEstimatedGasLimitTypes()).length).fill(DEFAULT_ESTIMATED_GAS_LIMIT),
         );
 
         const PositionRouter2 = await ethers.getContractFactory("PositionRouter2");
@@ -104,8 +111,8 @@ describe("MarketManager", () => {
             await pusd.getAddress(),
             await marketManager.getAddress(),
             await weth.getAddress(),
-            await positionRouter2ExecutionFeeTypes(),
-            Array((await positionRouter2ExecutionFeeTypes()).length).fill(MIN_EXECUTION_FEE),
+            await positionRouter2EstimatedGasLimitTypes(),
+            Array((await positionRouter2EstimatedGasLimitTypes()).length).fill(DEFAULT_ESTIMATED_GAS_LIMIT),
         );
 
         const Liquidator = await ethers.getContractFactory("Liquidator");
@@ -196,8 +203,9 @@ describe("MarketManager", () => {
         it("first mint", async () => {
             const {executor, alice, positionRouter2, mixedExecutor, weth} = await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             expect(
                 await gasUsed(
@@ -210,7 +218,7 @@ describe("MarketManager", () => {
                                 account: alice.address,
                                 market: weth.target,
                                 liquidityDelta: ethers.parseEther("1"),
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receiver: alice.address,
                                 payPUSD: false,
                                 minReceivedFromBurningPUSD: 0,
@@ -224,8 +232,9 @@ describe("MarketManager", () => {
         it("different user first mint", async () => {
             const {executor, alice, bob, positionRouter2, mixedExecutor, weth} = await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -237,7 +246,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("1"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -245,8 +254,9 @@ describe("MarketManager", () => {
                 ]),
             ]);
 
-            await positionRouter2.connect(bob).createMintLPTETH(bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(bob).createMintLPTETH(bob.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             expect(
@@ -260,7 +270,7 @@ describe("MarketManager", () => {
                                 account: bob.address,
                                 market: weth.target,
                                 liquidityDelta: ethers.parseEther("1"),
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receiver: bob.address,
                                 payPUSD: false,
                                 minReceivedFromBurningPUSD: 0,
@@ -275,8 +285,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -288,7 +299,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("1"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -296,8 +307,9 @@ describe("MarketManager", () => {
                 ]),
             ]);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             expect(
@@ -311,7 +323,7 @@ describe("MarketManager", () => {
                                 account: alice.address,
                                 market: weth.target,
                                 liquidityDelta: ethers.parseEther("1"),
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receiver: alice.address,
                                 payPUSD: false,
                                 minReceivedFromBurningPUSD: 0,
@@ -328,8 +340,9 @@ describe("MarketManager", () => {
             const {executor, alice, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await expect(
@@ -342,7 +355,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("1"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -367,7 +380,8 @@ describe("MarketManager", () => {
             await positionRouter2
                 .connect(alice)
                 .createBurnLPT(await weth.getAddress(), balance >> 1n, 1n, alice.address, Uint8Array.of(), {
-                    value: MIN_EXECUTION_FEE,
+                    value: DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -383,7 +397,7 @@ describe("MarketManager", () => {
                                 amount: balance >> 1n,
                                 acceptableMinLiquidity: 1n,
                                 receiver: alice.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                                 minPUSDReceived: 0,
                             },
@@ -400,8 +414,9 @@ describe("MarketManager", () => {
             const {executor, alice, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await expect(
@@ -414,7 +429,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("1"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -439,7 +454,8 @@ describe("MarketManager", () => {
             await positionRouter2
                 .connect(alice)
                 .createBurnLPT(await weth.getAddress(), balance, 1n, alice.address, Uint8Array.of(), {
-                    value: MIN_EXECUTION_FEE,
+                    value: DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -455,7 +471,7 @@ describe("MarketManager", () => {
                                 amount: balance,
                                 acceptableMinLiquidity: 1n,
                                 receiver: alice.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                                 minPUSDReceived: 0,
                             },
@@ -474,8 +490,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             await expect(
                 mixedExecutor.connect(executor).multicall([
@@ -487,7 +504,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("10"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -498,8 +515,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -515,7 +533,7 @@ describe("MarketManager", () => {
                                 marginDelta: ethers.parseEther("2"),
                                 sizeDelta: ethers.parseEther("5"),
                                 acceptableIndexPrice: PRICE + 3,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 payPUSD: false,
                             },
                         ]),
@@ -531,8 +549,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, carrie, positionRouter, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             await expect(
                 mixedExecutor.connect(executor).multicall([
@@ -544,7 +563,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("10"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -555,8 +574,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -570,7 +590,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -578,8 +598,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(carrie)
-                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 10, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 10, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -595,7 +616,7 @@ describe("MarketManager", () => {
                                 marginDelta: ethers.parseEther("2"),
                                 sizeDelta: ethers.parseEther("2"),
                                 acceptableIndexPrice: PRICE + 10,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 payPUSD: false,
                             },
                         ]),
@@ -611,8 +632,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             await expect(
                 mixedExecutor.connect(executor).multicall([
@@ -624,7 +646,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("10"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -635,8 +657,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -650,7 +673,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -658,8 +681,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 10, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 10, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -675,7 +699,7 @@ describe("MarketManager", () => {
                                 marginDelta: ethers.parseEther("2"),
                                 sizeDelta: ethers.parseEther("2"),
                                 acceptableIndexPrice: PRICE + 10,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 payPUSD: false,
                             },
                         ]),
@@ -691,8 +715,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             await expect(
                 mixedExecutor.connect(executor).multicall([
@@ -704,7 +729,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("10"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -715,8 +740,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -730,7 +756,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -738,8 +764,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 10, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 10, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -755,7 +782,7 @@ describe("MarketManager", () => {
                                 marginDelta: ethers.parseEther("2"),
                                 sizeDelta: ethers.parseEther("5"),
                                 acceptableIndexPrice: PRICE + 10,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 payPUSD: false,
                             },
                         ]),
@@ -771,13 +798,15 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, marketManager} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("100") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("100") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("10"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("10"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await expect(
@@ -790,7 +819,7 @@ describe("MarketManager", () => {
                             account: alice.address,
                             market: weth.target,
                             liquidityDelta: ethers.parseEther("100"),
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0,
@@ -803,7 +832,7 @@ describe("MarketManager", () => {
                             marginDelta: ethers.parseEther("10"),
                             sizeDelta: ethers.parseEther("10"),
                             acceptableIndexPrice: PRICE + 3,
-                            executionFee: MIN_EXECUTION_FEE,
+                            executionFee: DEFAULT_EXECUTION_FEE,
                             payPUSD: false,
                         },
                     ]),
@@ -814,9 +843,15 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("90"), (BigInt(PRICE) << 1n) + 10n, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("50") + MIN_EXECUTION_FEE,
-                });
+                .createIncreasePositionETH(
+                    ethers.parseEther("90"),
+                    (BigInt(PRICE) << 1n) + 10n,
+                    DEFAULT_EXECUTION_FEE,
+                    {
+                        value: ethers.parseEther("50") + DEFAULT_EXECUTION_FEE,
+                        gasPrice: GAS_PRICE,
+                    },
+                );
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
                     encodeUpdatePriceParam(await weth.getAddress(), BigInt(PRICE) << 1n, await time.latest()),
@@ -828,7 +863,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("50"),
                         sizeDelta: ethers.parseEther("90"),
                         acceptableIndexPrice: (BigInt(PRICE) << 1n) + 10n,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -843,7 +878,7 @@ describe("MarketManager", () => {
                     ethers.parseEther("40"),
                     1n,
                     bob.address,
-                    {value: MIN_EXECUTION_FEE},
+                    {value: DEFAULT_EXECUTION_FEE, gasPrice: GAS_PRICE},
                 );
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
@@ -857,7 +892,7 @@ describe("MarketManager", () => {
                         sizeDelta: ethers.parseEther("40"),
                         acceptableIndexPrice: 1n,
                         receiver: bob.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receivePUSD: false,
                     },
                 ]),
@@ -865,8 +900,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("1"), (BigInt(PRICE) << 1n) + 10n, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("1"), (BigInt(PRICE) << 1n) + 10n, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
             expect(
                 await gasUsed(
@@ -885,7 +921,7 @@ describe("MarketManager", () => {
                                 marginDelta: ethers.parseEther("1"),
                                 sizeDelta: ethers.parseEther("1"),
                                 acceptableIndexPrice: (BigInt(PRICE) << 1n) + 10n,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 payPUSD: false,
                             },
                         ]),
@@ -903,8 +939,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -916,7 +953,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -926,8 +963,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -941,7 +979,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -955,7 +993,7 @@ describe("MarketManager", () => {
                     ethers.parseEther("2.5"),
                     PRICE,
                     bob.address,
-                    {value: MIN_EXECUTION_FEE},
+                    {value: DEFAULT_EXECUTION_FEE, gasPrice: GAS_PRICE},
                 );
 
             expect(
@@ -972,7 +1010,7 @@ describe("MarketManager", () => {
                                 sizeDelta: ethers.parseEther("2.5"),
                                 acceptableIndexPrice: PRICE,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                             },
                         ]),
@@ -988,8 +1026,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1001,7 +1040,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1011,14 +1050,16 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await positionRouter
                 .connect(alice)
-                .createIncreasePositionETH(ethers.parseEther("1"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("1"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1032,7 +1073,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1043,7 +1084,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("1"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1057,7 +1098,7 @@ describe("MarketManager", () => {
                     ethers.parseEther("5"),
                     PRICE,
                     bob.address,
-                    {value: MIN_EXECUTION_FEE},
+                    {value: DEFAULT_EXECUTION_FEE, gasPrice: GAS_PRICE},
                 );
 
             expect(
@@ -1074,7 +1115,7 @@ describe("MarketManager", () => {
                                 sizeDelta: ethers.parseEther("5"),
                                 acceptableIndexPrice: PRICE,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                             },
                         ]),
@@ -1090,8 +1131,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1103,7 +1145,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1113,8 +1155,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1128,7 +1171,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1136,8 +1179,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(alice)
-                .createMintPUSDETH(false, BigInt(4000e6), alice.address, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createMintPUSDETH(false, BigInt(4000e6), alice.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1152,7 +1196,7 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("2"),
                         acceptableMinReceiveAmount: BigInt(4000e6),
                         receiver: alice.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
@@ -1165,7 +1209,7 @@ describe("MarketManager", () => {
                     ethers.parseEther("4.9"),
                     PRICE,
                     bob.address,
-                    {value: MIN_EXECUTION_FEE},
+                    {value: DEFAULT_EXECUTION_FEE, gasPrice: GAS_PRICE},
                 );
 
             expect(
@@ -1182,7 +1226,7 @@ describe("MarketManager", () => {
                                 sizeDelta: ethers.parseEther("4.9"),
                                 acceptableIndexPrice: PRICE,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                             },
                         ]),
@@ -1202,8 +1246,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1215,7 +1260,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1225,14 +1270,16 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await positionRouter
                 .connect(alice)
-                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1246,7 +1293,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1257,7 +1304,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("1"),
                         sizeDelta: ethers.parseEther("2"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1265,8 +1312,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(alice)
-                .createMintPUSDETH(false, BigInt(20900e6), alice.address, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("8") + MIN_EXECUTION_FEE,
+                .createMintPUSDETH(false, BigInt(20900e6), alice.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("8") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1281,7 +1329,7 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("8"),
                         acceptableMinReceiveAmount: BigInt(20900e6),
                         receiver: alice.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
@@ -1294,7 +1342,7 @@ describe("MarketManager", () => {
                     ethers.parseEther("5.0"),
                     PRICE,
                     bob.address,
-                    {value: MIN_EXECUTION_FEE},
+                    {value: DEFAULT_EXECUTION_FEE, gasPrice: GAS_PRICE},
                 );
 
             expect(
@@ -1311,7 +1359,7 @@ describe("MarketManager", () => {
                                 sizeDelta: ethers.parseEther("5.0"),
                                 acceptableIndexPrice: PRICE,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                                 receivePUSD: false,
                             },
                         ]),
@@ -1333,8 +1381,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, pusd} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1346,7 +1395,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1356,8 +1405,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1371,15 +1421,18 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             expect(
                 await gasUsed(
@@ -1395,7 +1448,7 @@ describe("MarketManager", () => {
                                 acceptableMaxPayAmount: ethers.parseEther("1"),
                                 acceptableMinReceiveAmount: BigInt(1000e6),
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                             },
                         ]),
                     ]),
@@ -1409,8 +1462,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, mixedExecutor, weth, pusd} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1422,7 +1476,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1432,8 +1486,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1447,15 +1502,18 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
@@ -1469,15 +1527,16 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("1"),
                         acceptableMinReceiveAmount: BigInt(1000e6),
                         receiver: bob.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
 
             await positionRouter
                 .connect(alice)
-                .createMintPUSDETH(false, BigInt(1000e6), alice.address, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+                .createMintPUSDETH(false, BigInt(1000e6), alice.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -1494,7 +1553,7 @@ describe("MarketManager", () => {
                                 acceptableMaxPayAmount: ethers.parseEther("1"),
                                 acceptableMinReceiveAmount: BigInt(1000e6),
                                 receiver: alice.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                             },
                         ]),
                     ]),
@@ -1508,8 +1567,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth, pusd} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1521,7 +1581,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1531,8 +1591,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1546,15 +1607,18 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
@@ -1568,14 +1632,17 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("1"),
                         acceptableMinReceiveAmount: BigInt(1000e6),
                         receiver: bob.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             expect(
                 await gasUsed(
@@ -1591,7 +1658,7 @@ describe("MarketManager", () => {
                                 acceptableMaxPayAmount: ethers.parseEther("1"),
                                 acceptableMinReceiveAmount: BigInt(1000e6),
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                             },
                         ]),
                     ]),
@@ -1607,8 +1674,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth, pusd} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1620,7 +1688,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1630,8 +1698,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1645,15 +1714,18 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
@@ -1667,7 +1739,7 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("1"),
                         acceptableMinReceiveAmount: BigInt(1000e6),
                         receiver: bob.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
@@ -1677,7 +1749,8 @@ describe("MarketManager", () => {
             await positionRouter
                 .connect(bob)
                 .createBurnPUSD(await weth.getAddress(), true, BigInt(500e6), 1n, bob.address, Uint8Array.of(), {
-                    value: MIN_EXECUTION_FEE,
+                    value: DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -1694,7 +1767,7 @@ describe("MarketManager", () => {
                                 acceptableMaxPayAmount: BigInt(500e6),
                                 acceptableMinReceiveAmount: 1n,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                             },
                         ]),
                     ]),
@@ -1708,8 +1781,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth, pusd} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1721,7 +1795,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1731,8 +1805,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1746,15 +1821,18 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
             ]);
 
-            await positionRouter.connect(bob).createMintPUSDETH(false, BigInt(1000e6), bob.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
-            });
+            await positionRouter
+                .connect(bob)
+                .createMintPUSDETH(false, BigInt(1000e6), bob.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
+                });
 
             await mixedExecutor.connect(executor).multicall([
                 mixedExecutor.interface.encodeFunctionData("updatePrice", [
@@ -1768,7 +1846,7 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("1"),
                         acceptableMinReceiveAmount: BigInt(1000e6),
                         receiver: bob.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);
@@ -1780,7 +1858,8 @@ describe("MarketManager", () => {
             await positionRouter
                 .connect(bob)
                 .createBurnPUSD(await weth.getAddress(), true, BigInt(500e6), 1n, bob.address, Uint8Array.of(), {
-                    value: MIN_EXECUTION_FEE,
+                    value: DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             expect(
@@ -1797,7 +1876,7 @@ describe("MarketManager", () => {
                                 acceptableMaxPayAmount: BigInt(500e6),
                                 acceptableMinReceiveAmount: 1n,
                                 receiver: bob.address,
-                                executionFee: MIN_EXECUTION_FEE,
+                                executionFee: DEFAULT_EXECUTION_FEE,
                             },
                         ]),
                     ]),
@@ -1813,8 +1892,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1826,7 +1906,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1836,14 +1916,16 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await positionRouter
                 .connect(alice)
-                .createIncreasePositionETH(ethers.parseEther("1"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("1"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1857,7 +1939,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1868,7 +1950,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("1"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1898,8 +1980,9 @@ describe("MarketManager", () => {
             const {executor, alice, bob, positionRouter, positionRouter2, marketManager, mixedExecutor, weth} =
                 await loadFixture(deployFixture);
 
-            await positionRouter2.connect(alice).createMintLPTETH(alice.address, MIN_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + MIN_EXECUTION_FEE,
+            await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
+                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                gasPrice: GAS_PRICE,
             });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1911,7 +1994,7 @@ describe("MarketManager", () => {
                         account: alice.address,
                         market: weth.target,
                         liquidityDelta: ethers.parseEther("10"),
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         receiver: alice.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0,
@@ -1921,14 +2004,16 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(bob)
-                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("2") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("5"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("2") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await positionRouter
                 .connect(alice)
-                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 3, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("1") + MIN_EXECUTION_FEE,
+                .createIncreasePositionETH(ethers.parseEther("2"), PRICE + 3, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("1") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1942,7 +2027,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("2"),
                         sizeDelta: ethers.parseEther("5"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1953,7 +2038,7 @@ describe("MarketManager", () => {
                         marginDelta: ethers.parseEther("1"),
                         sizeDelta: ethers.parseEther("2"),
                         acceptableIndexPrice: PRICE + 3,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                         payPUSD: false,
                     },
                 ]),
@@ -1961,8 +2046,9 @@ describe("MarketManager", () => {
 
             await positionRouter
                 .connect(alice)
-                .createMintPUSDETH(false, BigInt(20900e6), alice.address, MIN_EXECUTION_FEE, {
-                    value: ethers.parseEther("8") + MIN_EXECUTION_FEE,
+                .createMintPUSDETH(false, BigInt(20900e6), alice.address, DEFAULT_EXECUTION_FEE, {
+                    value: ethers.parseEther("8") + DEFAULT_EXECUTION_FEE,
+                    gasPrice: GAS_PRICE,
                 });
 
             await mixedExecutor.connect(executor).multicall([
@@ -1977,7 +2063,7 @@ describe("MarketManager", () => {
                         acceptableMaxPayAmount: ethers.parseEther("8"),
                         acceptableMinReceiveAmount: BigInt(20900e6),
                         receiver: alice.address,
-                        executionFee: MIN_EXECUTION_FEE,
+                        executionFee: DEFAULT_EXECUTION_FEE,
                     },
                 ]),
             ]);

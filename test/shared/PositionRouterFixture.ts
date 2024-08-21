@@ -1,6 +1,6 @@
 import {ethers, upgrades} from "hardhat";
 import {PUSDUpgradeable} from "../../typechain-types";
-import {ExecutionFeeType} from "./Constants";
+import {EstimatedGasLimitType} from "./Constants";
 
 const marketDecimals = 18n;
 
@@ -42,8 +42,8 @@ export async function deployFixture() {
         usd.target,
         marketManager.target,
         await weth.getAddress(),
-        await positionRouterExecutionFeeTypes(),
-        await positionRouterMinExecutionFees(),
+        await positionRouterEstimatedGasLimitTypes(),
+        Array((await positionRouterEstimatedGasLimitTypes()).length).fill(500_000),
     ]);
     await positionRouter.waitForDeployment();
     await positionRouter.updatePositionExecutor(executor.address, true);
@@ -63,38 +63,26 @@ export async function deployFixture() {
     };
 }
 
-export async function positionRouterExecutionFeeTypes() {
+export async function positionRouterEstimatedGasLimitTypes() {
     return [
-        ExecutionFeeType.IncreasePosition,
-        ExecutionFeeType.IncreasePositionETH,
-        ExecutionFeeType.IncreasePositionPayPUSD,
-        ExecutionFeeType.DecreasePosition,
-        ExecutionFeeType.DecreasePositionReceivePUSD,
-        ExecutionFeeType.MintPUSD,
-        ExecutionFeeType.MintPUSDETH,
-        ExecutionFeeType.BurnPUSD,
+        EstimatedGasLimitType.IncreasePosition,
+        EstimatedGasLimitType.IncreasePositionPayPUSD,
+        EstimatedGasLimitType.DecreasePosition,
+        EstimatedGasLimitType.DecreasePositionReceivePUSD,
+        EstimatedGasLimitType.MintPUSD,
+        EstimatedGasLimitType.BurnPUSD,
     ];
 }
 
-export async function positionRouter2ExecutionFeeTypes() {
+export async function positionRouter2EstimatedGasLimitTypes() {
     return [
-        ExecutionFeeType.MintLPT,
-        ExecutionFeeType.MintLPTETH,
-        ExecutionFeeType.MintLPTPayPUSD,
-        ExecutionFeeType.BurnLPT,
-        ExecutionFeeType.BurnLPTReceivePUSD,
+        EstimatedGasLimitType.MintLPT,
+        EstimatedGasLimitType.MintLPTPayPUSD,
+        EstimatedGasLimitType.BurnLPT,
+        EstimatedGasLimitType.BurnLPTReceivePUSD,
     ];
 }
 
-export async function positionRouterMinExecutionFees() {
-    return [
-        ethers.parseEther("0.0001"),
-        ethers.parseEther("0.0002"),
-        ethers.parseEther("0.0003"),
-        ethers.parseEther("0.0004"),
-        ethers.parseEther("0.0005"),
-        ethers.parseEther("0.0006"),
-        ethers.parseEther("0.0007"),
-        ethers.parseEther("0.0008"),
-    ];
+export function ceilDiv(a: bigint, b: bigint) {
+    return (a + b - 1n) / b;
 }

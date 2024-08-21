@@ -1,8 +1,7 @@
 import {loadFixture, mine} from "@nomicfoundation/hardhat-network-helpers";
 import {expect, use} from "chai";
-import {ethers, upgrades} from "hardhat";
-import {PUSDUpgradeable} from "../typechain-types";
-import {ExecutionFeeType, PRICE_1} from "./shared/Constants";
+import {ethers} from "hardhat";
+import {PRICE_1} from "./shared/Constants";
 import {jestSnapshotPlugin} from "mocha-chai-jest-snapshot";
 import {gasUsed} from "./shared/Gas";
 import {genERC20PermitData, resetAllowance} from "./shared/Permit";
@@ -12,16 +11,14 @@ import {
     increasePositionRequestId,
     mintPUSDRequestId,
 } from "./shared/RequestId";
-import {
-    deployFixture,
-    positionRouterExecutionFeeTypes,
-    positionRouterMinExecutionFees,
-} from "./shared/PositionRouterFixture";
+import {deployFixture} from "./shared/PositionRouterFixture";
 
 use(jestSnapshotPlugin());
 describe("PositionRouter", () => {
-    const marketDecimals = 18n;
     const deadline = ethers.MaxUint256;
+    const defaultEstimatedGasLimit = 500_000n;
+    const gasPrice = ethers.parseUnits("1", "gwei");
+    const defaultExecutionFee = gasPrice * defaultEstimatedGasLimit;
 
     describe("#updatePositionExecutor", async () => {
         it("update position executor from true to false", async () => {
@@ -57,24 +54,6 @@ describe("PositionRouter", () => {
         });
     });
 
-    describe("#updateMinExecutionFee", async () => {
-        it("update min execution fee", async () => {
-            const {positionRouter} = await loadFixture(deployFixture);
-            const executionFeeTypes = await positionRouterExecutionFeeTypes();
-            const minExecutionFees = await positionRouterMinExecutionFees();
-            expect(executionFeeTypes.length).to.eq(minExecutionFees.length);
-            for (let i = 0; i < executionFeeTypes.length; i++) {
-                expect(await positionRouter.minExecutionFees(executionFeeTypes[i])).to.eq(minExecutionFees[i]);
-                expect(
-                    await gasUsed(
-                        positionRouter.updateMinExecutionFee(executionFeeTypes[i], minExecutionFees[i] + 1000n),
-                    ),
-                ).toMatchSnapshot();
-                expect(await positionRouter.minExecutionFees(executionFeeTypes[i])).to.eq(minExecutionFees[i] + 1000n);
-            }
-        });
-    });
-
     describe("#updateExecutionGasLimit", async () => {
         it("update execution gas limit", async () => {
             const {positionRouter} = await loadFixture(deployFixture);
@@ -88,13 +67,14 @@ describe("PositionRouter", () => {
         describe("#createMintPUSD", () => {
             it("first createMintPUSD without permitData", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
                             .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -112,16 +92,20 @@ describe("PositionRouter", () => {
             });
             it("createMintPUSD without permitData again", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
                             .createMintPUSD(market.target, false, 100n, 1n, trader.address, "0x", {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -150,7 +134,7 @@ describe("PositionRouter", () => {
             });
             it("first createMintPUSD with permitData", async function () {
                 const {trader, market, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(market, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     market,
@@ -165,6 +149,7 @@ describe("PositionRouter", () => {
                             .connect(trader)
                             .createMintPUSD(market.target, false, 100n, 0n, trader.address, permitData, {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -182,7 +167,7 @@ describe("PositionRouter", () => {
             });
             it("createMintPUSD with permitData again", async function () {
                 const {trader, market, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(market, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     market,
@@ -195,6 +180,7 @@ describe("PositionRouter", () => {
                     .connect(trader)
                     .createMintPUSD(market.target, false, 100n, 0n, trader.address, permitData, {
                         value: minExecutionFee,
+                        gasPrice,
                     });
                 expect(
                     await gasUsed(
@@ -202,6 +188,7 @@ describe("PositionRouter", () => {
                             .connect(trader)
                             .createMintPUSD(market.target, false, 100n, 1n, trader.address, "0x", {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -232,14 +219,14 @@ describe("PositionRouter", () => {
         describe("#createMintPUSDETH", () => {
             it("first createMintPUSDETH", async function () {
                 const {trader, weth, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSDETH);
+                const minExecutionFee = defaultExecutionFee;
                 const amount = 100n;
                 const value = minExecutionFee + amount;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createMintPUSDETH(false, 0n, trader.address, minExecutionFee, {value}),
+                            .createMintPUSDETH(false, 0n, trader.address, minExecutionFee, {value, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -256,17 +243,17 @@ describe("PositionRouter", () => {
             });
             it("createMintPUSDETH again", async function () {
                 const {trader, weth, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSDETH);
+                const minExecutionFee = defaultExecutionFee;
                 const amount = 100n;
                 const value = minExecutionFee + amount;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSDETH(false, 0n, trader.address, minExecutionFee, {value});
+                    .createMintPUSDETH(false, 0n, trader.address, minExecutionFee, {value, gasPrice});
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createMintPUSDETH(false, 1n, trader.address, minExecutionFee, {value}),
+                            .createMintPUSDETH(false, 1n, trader.address, minExecutionFee, {value, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -296,7 +283,6 @@ describe("PositionRouter", () => {
         describe("#cancelMintPUSD", () => {
             it("cancel when request not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -304,17 +290,20 @@ describe("PositionRouter", () => {
                     acceptableMaxPayAmount: 100n,
                     acceptableMinReceiveAmount: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                 };
                 expect(await gasUsed(positionRouter.cancelMintPUSD(param, trader.address))).toMatchSnapshot();
             });
 
             it("cancel when executor cancel and market is not weth", async () => {
                 const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -332,9 +321,10 @@ describe("PositionRouter", () => {
             });
             it("cancel when executor cancel and market is weth", async () => {
                 const {positionRouter, weth, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSDETH);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter.connect(trader).createMintPUSDETH(true, 100n, trader.address, minExecutionFee, {
                     value: minExecutionFee + 100n,
+                    gasPrice,
                 });
                 const param = {
                     account: trader.address,
@@ -354,10 +344,13 @@ describe("PositionRouter", () => {
 
             it("cancel when request owner calls", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 await mine(await positionRouter.minBlockDelayPublic());
                 const param = {
                     account: trader.address,
@@ -378,7 +371,6 @@ describe("PositionRouter", () => {
         describe("#executeMintPUSD", () => {
             it("execute when request is not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -386,16 +378,16 @@ describe("PositionRouter", () => {
                     acceptableMaxPayAmount: 100n,
                     acceptableMinReceiveAmount: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                 };
                 expect(await gasUsed(positionRouter.executeMintPUSD(param, trader.address))).toMatchSnapshot();
             });
-
             it("execute when the exactIn is true and market is weth", async () => {
                 const {positionRouter, marketManager, weth, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSDETH);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter.connect(trader).createMintPUSDETH(true, 0n, trader.address, minExecutionFee, {
                     value: minExecutionFee + 100n,
+                    gasPrice,
                 });
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -417,10 +409,13 @@ describe("PositionRouter", () => {
             });
             it("execute when the exactIn is true and market is not weth", async () => {
                 const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, true, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, true, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 await marketManager.setPayAmount(80n);
@@ -441,9 +436,10 @@ describe("PositionRouter", () => {
             });
             it("execute when the exactIn is false and market is weth", async () => {
                 const {positionRouter, marketManager, weth, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSDETH);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter.connect(trader).createMintPUSDETH(false, 0n, trader.address, minExecutionFee, {
                     value: minExecutionFee + 100n,
+                    gasPrice,
                 });
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -465,10 +461,13 @@ describe("PositionRouter", () => {
             });
             it("execute when the exactIn is false and market is not weth", async () => {
                 const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 const param = {
@@ -486,18 +485,49 @@ describe("PositionRouter", () => {
                 const id = await mintPUSDRequestId(param);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
-        });
-        describe("#executeOrCancelMintPUSD", () => {
+            it("execute when the exactIn is false and market is not weth and refund execution fee", async () => {
+                const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter
+                    .connect(trader)
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
+                // set a delay value to prevent expire
+                await positionRouter.updateDelayValues(0n, 0n, 600n);
+                const param = {
+                    account: trader.address,
+                    market: market.target,
+                    exactIn: false,
+                    acceptableMaxPayAmount: 100n,
+                    acceptableMinReceiveAmount: 0n,
+                    receiver: trader.address,
+                    executionFee: minExecutionFee,
+                };
+                expect(
+                    await gasUsed(
+                        positionRouter
+                            .connect(executor)
+                            .executeMintPUSD(param, executor.address, {gasPrice: gasPrice / 2n}),
+                    ),
+                ).toMatchSnapshot();
+                const id = await mintPUSDRequestId(param);
+                expect(await positionRouter.blockNumbers(id)).eq(0n);
+            });
             it("cancel request if execution reverted", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 // _maxBlockDelay is 0, execution will revert immediately
                 await positionRouter.updateDelayValues(0, 0, 0);
 
                 // all requests should be cancelled because they reverted
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
 
                 const param = {
                     account: trader.address,
@@ -516,10 +546,13 @@ describe("PositionRouter", () => {
             });
             it("execute request if execution passed", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.MintPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createMintPUSD(market.target, false, 100n, 0n, trader.address, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -543,12 +576,12 @@ describe("PositionRouter", () => {
         describe("#createBurnPUSD", () => {
             it("first createBurnPUSD without permitData", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee}),
+                            .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -565,15 +598,15 @@ describe("PositionRouter", () => {
             });
             it("createBurnPUSD without permitData again", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createBurnPUSD(market, false, 100n, 1n, trader, "0x", {value: minExecutionFee}),
+                            .createBurnPUSD(market, false, 100n, 1n, trader, "0x", {value: minExecutionFee, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -601,7 +634,7 @@ describe("PositionRouter", () => {
             });
             it("first createBurnPUSD with permitData", async () => {
                 const {positionRouter, market, usd, trader, marketManager} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(usd, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     usd,
@@ -612,9 +645,10 @@ describe("PositionRouter", () => {
                 );
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createBurnPUSD(market, false, 100n, 0n, trader, permitData, {value: minExecutionFee}),
+                        positionRouter.connect(trader).createBurnPUSD(market, false, 100n, 0n, trader, permitData, {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -631,7 +665,7 @@ describe("PositionRouter", () => {
             });
             it("createBurnPUSD with permitData again", async () => {
                 const {positionRouter, market, usd, trader, marketManager} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(usd, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     usd,
@@ -642,12 +676,12 @@ describe("PositionRouter", () => {
                 );
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, permitData, {value: minExecutionFee});
+                    .createBurnPUSD(market, false, 100n, 0n, trader, permitData, {value: minExecutionFee, gasPrice});
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createBurnPUSD(market, false, 100n, 1n, trader, "0x", {value: minExecutionFee}),
+                            .createBurnPUSD(market, false, 100n, 1n, trader, "0x", {value: minExecutionFee, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -678,7 +712,6 @@ describe("PositionRouter", () => {
         describe("#cancelBurnPUSD", () => {
             it("cancel when request not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
                 const param = {
                     market: market.target,
                     account: trader.address,
@@ -686,17 +719,17 @@ describe("PositionRouter", () => {
                     acceptableMaxPayAmount: 100n,
                     acceptableMinReceiveAmount: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                 };
                 expect(await gasUsed(positionRouter.cancelBurnPUSD(param, trader.address))).toMatchSnapshot();
             });
 
             it("cancel burn PUSD", async () => {
                 const {positionRouter, market, usd, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
                 const param = {
                     market: market.target,
                     account: trader.address,
@@ -717,7 +750,6 @@ describe("PositionRouter", () => {
         describe("#executeBurnPUSD", () => {
             it("execute when request not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
                 const param = {
                     market: market.target,
                     account: trader.address,
@@ -725,17 +757,17 @@ describe("PositionRouter", () => {
                     acceptableMaxPayAmount: 100n,
                     acceptableMinReceiveAmount: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                 };
                 expect(await gasUsed(positionRouter.executeBurnPUSD(param, trader.address))).toMatchSnapshot();
             });
 
             it("execute when exactIn is true and the market is weth", async () => {
                 const {positionRouter, marketManager, weth, usd, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(weth, true, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(weth, true, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
 
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -759,10 +791,10 @@ describe("PositionRouter", () => {
             });
             it("execute when exactIn is true and the market is not weth", async () => {
                 const {positionRouter, marketManager, market, usd, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, true, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(market, true, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
 
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -786,10 +818,10 @@ describe("PositionRouter", () => {
             });
             it("execute when exactIn is false and the market is weth", async () => {
                 const {positionRouter, marketManager, weth, usd, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(weth, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(weth, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
 
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -811,12 +843,44 @@ describe("PositionRouter", () => {
                 const id = await burnPUSDRequestId(param);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
-            it("execute when exactIn is false and market is not weth", async () => {
-                const {positionRouter, marketManager, market, usd, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+
+            it("execute when exactIn is false and the market is weth and refund execution fee", async () => {
+                const {positionRouter, marketManager, weth, usd, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(weth, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
+
+                // set a delay value to prevent expire
+                await positionRouter.updateDelayValues(0n, 0n, 600n);
+
+                await marketManager.setPayAmount(80n);
+                await marketManager.setReceiveAmount(100n);
+                const param = {
+                    market: weth.target,
+                    account: trader.address,
+                    exactIn: false,
+                    acceptableMaxPayAmount: 100n,
+                    acceptableMinReceiveAmount: 0n,
+                    receiver: trader.address,
+                    executionFee: minExecutionFee,
+                };
+                expect(
+                    await gasUsed(
+                        positionRouter
+                            .connect(executor)
+                            .executeBurnPUSD(param, executor.address, {gasPrice: gasPrice / 2n}),
+                    ),
+                ).toMatchSnapshot();
+                const id = await burnPUSDRequestId(param);
+                expect(await positionRouter.blockNumbers(id)).eq(0n);
+            });
+            it("execute when exactIn is false and market is not weth", async () => {
+                const {positionRouter, marketManager, market, usd, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter
+                    .connect(trader)
+                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
 
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
@@ -842,14 +906,14 @@ describe("PositionRouter", () => {
         describe("#executeOrCancelBurnPUSD", () => {
             it("cancel request if execution reverted", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 // _maxBlockDelay is 0, execution will revert immediately
                 await positionRouter.updateDelayValues(0, 0, 0);
 
                 // all requests should be cancelled because they reverted
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
 
                 const param = {
                     market: market.target,
@@ -868,10 +932,10 @@ describe("PositionRouter", () => {
             });
             it("execute request if execution passed", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.BurnPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnPUSD(market, false, 100n, 0n, trader, "0x", {value: minExecutionFee, gasPrice});
                 const param = {
                     market: market.target,
                     account: trader.address,
@@ -885,7 +949,9 @@ describe("PositionRouter", () => {
                 const tx = positionRouter.connect(executor).executeOrCancelBurnPUSD(param, executor.address);
                 expect(await gasUsed(tx)).toMatchSnapshot();
                 const id = await burnPUSDRequestId(param);
-                await expect(tx).to.emit(positionRouter, "BurnPUSDExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter, "BurnPUSDExecuted")
+                    .withArgs(id, executor.address, minExecutionFee);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
         });
@@ -895,12 +961,13 @@ describe("PositionRouter", () => {
         describe("#createIncreasePosition", () => {
             it("first createIncreasePosition without permitData", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee}),
+                        positionRouter.connect(trader).createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -917,15 +984,16 @@ describe("PositionRouter", () => {
             });
             it("createIncreasePosition without permitData again", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createIncreasePosition(market, 200n, 200n, PRICE_1, "0x", {value: minExecutionFee}),
+                        positionRouter.connect(trader).createIncreasePosition(market, 200n, 200n, PRICE_1, "0x", {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -953,7 +1021,7 @@ describe("PositionRouter", () => {
             });
             it("first createIncreasePosition with permitData", async function () {
                 const {trader, market, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(market, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     market,
@@ -964,9 +1032,10 @@ describe("PositionRouter", () => {
                 );
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createIncreasePosition(market, 100n, 100n, PRICE_1, permitData, {value: minExecutionFee}),
+                        positionRouter.connect(trader).createIncreasePosition(market, 100n, 100n, PRICE_1, permitData, {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -983,7 +1052,7 @@ describe("PositionRouter", () => {
             });
             it("createIncreasePosition with permitData again", async function () {
                 const {trader, market, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(market, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     market,
@@ -992,14 +1061,16 @@ describe("PositionRouter", () => {
                     ethers.MaxUint256,
                     deadline,
                 );
-                await positionRouter
-                    .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, permitData, {value: minExecutionFee});
+                await positionRouter.connect(trader).createIncreasePosition(market, 100n, 100n, PRICE_1, permitData, {
+                    value: minExecutionFee,
+                    gasPrice,
+                });
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createIncreasePosition(market, 200n, 200n, PRICE_1, "0x", {value: minExecutionFee}),
+                        positionRouter.connect(trader).createIncreasePosition(market, 200n, 200n, PRICE_1, "0x", {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -1029,14 +1100,14 @@ describe("PositionRouter", () => {
         describe("#createIncreasePositionETH", () => {
             it("first createIncreasePositionETH", async function () {
                 const {trader, weth, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionETH);
+                const minExecutionFee = defaultExecutionFee;
                 const amount = 100n;
                 const value = minExecutionFee + amount;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value}),
+                            .createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -1053,15 +1124,17 @@ describe("PositionRouter", () => {
             });
             it("createIncreasePositionETH again", async function () {
                 const {trader, weth, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionETH);
+                const minExecutionFee = defaultExecutionFee;
                 const amount = 100n;
                 const value = minExecutionFee + amount;
-                await positionRouter.connect(trader).createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value});
+                await positionRouter
+                    .connect(trader)
+                    .createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value, gasPrice});
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createIncreasePositionETH(200n, PRICE_1, minExecutionFee, {value}),
+                            .createIncreasePositionETH(200n, PRICE_1, minExecutionFee, {value, gasPrice}),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -1091,12 +1164,15 @@ describe("PositionRouter", () => {
         describe("#createIncreasePositionPayPUSD", () => {
             it("first createIncreasePositionPayPUSD without permitData", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee}),
+                            .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, "0x", {
+                                value: minExecutionFee,
+                                gasPrice,
+                            }),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -1113,15 +1189,19 @@ describe("PositionRouter", () => {
             });
             it("createIncreasePositionPayPUSD without permitData again", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
-                await positionRouter
-                    .connect(trader)
-                    .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter.connect(trader).createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, "0x", {
+                    value: minExecutionFee,
+                    gasPrice,
+                });
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
-                            .createIncreasePositionPayPUSD(market, 200n, 200n, PRICE_1, "0x", {value: minExecutionFee}),
+                            .createIncreasePositionPayPUSD(market, 200n, 200n, PRICE_1, "0x", {
+                                value: minExecutionFee,
+                                gasPrice,
+                            }),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -1149,7 +1229,7 @@ describe("PositionRouter", () => {
             });
             it("first createIncreasePositionPayPUSD with permitData", async function () {
                 const {trader, market, usd, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(usd, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     usd,
@@ -1164,6 +1244,7 @@ describe("PositionRouter", () => {
                             .connect(trader)
                             .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, permitData, {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -1181,7 +1262,7 @@ describe("PositionRouter", () => {
             });
             it("createIncreasePositionPayPUSD with permitData again", async function () {
                 const {trader, market, usd, marketManager, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await resetAllowance(usd, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(
                     usd,
@@ -1192,13 +1273,17 @@ describe("PositionRouter", () => {
                 );
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, permitData, {value: minExecutionFee});
+                    .createIncreasePositionPayPUSD(market, 100n, 100n, PRICE_1, permitData, {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
                             .createIncreasePositionPayPUSD(market, 200n, 200n, PRICE_1, "0x", {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -1229,14 +1314,13 @@ describe("PositionRouter", () => {
         describe("#cancelIncreasePosition", () => {
             it("cancel when request not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
                 const param = {
                     account: trader.address,
                     market: market.target,
                     marginDelta: 100n,
                     sizeDelta: 100n,
                     acceptableIndexPrice: PRICE_1,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     payPUSD: true,
                 };
                 expect(await gasUsed(positionRouter.cancelIncreasePosition(param, trader.address))).toMatchSnapshot();
@@ -1244,10 +1328,10 @@ describe("PositionRouter", () => {
 
             it("cancel when executor cancel and market is not weth", async () => {
                 const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1265,10 +1349,11 @@ describe("PositionRouter", () => {
             });
             it("cancel when executor cancel and market is weth", async () => {
                 const {positionRouter, weth, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionETH);
-                await positionRouter
-                    .connect(trader)
-                    .createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value: minExecutionFee + 100n});
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter.connect(trader).createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {
+                    value: minExecutionFee + 100n,
+                    gasPrice,
+                });
                 const param = {
                     account: trader.address,
                     market: weth.target,
@@ -1286,10 +1371,13 @@ describe("PositionRouter", () => {
             });
             it("cancel when executor cancel and payPUSD is true", async () => {
                 const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePositionPayPUSD(market.target, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePositionPayPUSD(market.target, 100n, 100n, PRICE_1, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1308,10 +1396,10 @@ describe("PositionRouter", () => {
 
             it("cancel when request owner calls and market is not weth", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
                 await mine(await positionRouter.minBlockDelayPublic());
                 const param = {
                     account: trader.address,
@@ -1331,10 +1419,11 @@ describe("PositionRouter", () => {
 
             it("cancel when request owner calls and market is weth", async () => {
                 const {positionRouter, weth, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionETH);
-                await positionRouter
-                    .connect(trader)
-                    .createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {value: minExecutionFee + 100n});
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter.connect(trader).createIncreasePositionETH(100n, PRICE_1, minExecutionFee, {
+                    value: minExecutionFee + 100n,
+                    gasPrice,
+                });
                 await mine(await positionRouter.minBlockDelayPublic());
                 const param = {
                     account: trader.address,
@@ -1354,10 +1443,13 @@ describe("PositionRouter", () => {
 
             it("cancel when request owner calls and payPUSD is true", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePositionPayPUSD);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePositionPayPUSD(market.target, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePositionPayPUSD(market.target, 100n, 100n, PRICE_1, "0x", {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 await mine(await positionRouter.minBlockDelayPublic());
                 const param = {
                     account: trader.address,
@@ -1378,14 +1470,13 @@ describe("PositionRouter", () => {
         describe("#executeIncreasePosition", () => {
             it("execute when request is not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
                 const param = {
                     account: trader.address,
                     market: market.target,
                     marginDelta: 100n,
                     sizeDelta: 100n,
                     acceptableIndexPrice: PRICE_1,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     payPUSD: false,
                 };
                 expect(await gasUsed(positionRouter.executeIncreasePosition(param, trader.address))).toMatchSnapshot();
@@ -1393,10 +1484,10 @@ describe("PositionRouter", () => {
 
             it("execute when request is exists", async () => {
                 const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 await marketManager.setMaxPrice(PRICE_1);
@@ -1415,18 +1506,47 @@ describe("PositionRouter", () => {
                 const id = await increasePositionRequestId(param);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
+
+            it("execute when request is exists and refund execution fee", async () => {
+                const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter
+                    .connect(trader)
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
+                // set a delay value to prevent expire
+                await positionRouter.updateDelayValues(0n, 0n, 600n);
+                await marketManager.setMaxPrice(PRICE_1);
+                const param = {
+                    account: trader.address,
+                    market: market.target,
+                    marginDelta: 100n,
+                    sizeDelta: 100n,
+                    acceptableIndexPrice: PRICE_1,
+                    executionFee: minExecutionFee,
+                    payPUSD: false,
+                };
+                expect(
+                    await gasUsed(
+                        positionRouter
+                            .connect(executor)
+                            .executeIncreasePosition(param, executor.address, {gasPrice: gasPrice / 2n}),
+                    ),
+                ).toMatchSnapshot();
+                const id = await increasePositionRequestId(param);
+                expect(await positionRouter.blockNumbers(id)).eq(0n);
+            });
         });
         describe("#executeOrCancelIncreasePosition", () => {
             it("cancel request if execution reverted", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 // _maxBlockDelay is 0, execution will revert immediately
                 await positionRouter.updateDelayValues(0, 0, 0);
 
                 // all requests should be cancelled because they reverted
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
 
                 const param = {
                     account: trader.address,
@@ -1445,10 +1565,10 @@ describe("PositionRouter", () => {
             });
             it("execute request if execution passed", async () => {
                 const {trader, executor, positionRouter, market, marketManager} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.IncreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee});
+                    .createIncreasePosition(market, 100n, 100n, PRICE_1, "0x", {value: minExecutionFee, gasPrice});
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1463,7 +1583,9 @@ describe("PositionRouter", () => {
                 const tx = positionRouter.connect(executor).executeOrCancelIncreasePosition(param, executor.address);
                 expect(await gasUsed(tx)).toMatchSnapshot();
                 const id = await increasePositionRequestId(param);
-                await expect(tx).to.emit(positionRouter, "IncreasePositionExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter, "IncreasePositionExecuted")
+                    .withArgs(id, executor.address, minExecutionFee);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
         });
@@ -1472,12 +1594,13 @@ describe("PositionRouter", () => {
         describe("#createDecreasePosition", () => {
             it("first createDecreasePosition", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee}),
+                        positionRouter.connect(trader).createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param = {
@@ -1495,15 +1618,16 @@ describe("PositionRouter", () => {
             });
             it("createDecreasePosition again", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 expect(
                     await gasUsed(
-                        positionRouter
-                            .connect(trader)
-                            .createDecreasePosition(market, 200n, 200n, PRICE_1, trader, {value: minExecutionFee}),
+                        positionRouter.connect(trader).createDecreasePosition(market, 200n, 200n, PRICE_1, trader, {
+                            value: minExecutionFee,
+                            gasPrice,
+                        }),
                     ),
                 ).toMatchSnapshot();
                 const param1 = {
@@ -1535,15 +1659,14 @@ describe("PositionRouter", () => {
         describe("#createDecreasePositionReceivePUSD", () => {
             it("first createDecreasePositionReceivePUSD", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(
-                    ExecutionFeeType.DecreasePositionReceivePUSD,
-                );
+                const minExecutionFee = defaultExecutionFee;
                 expect(
                     await gasUsed(
                         positionRouter
                             .connect(trader)
                             .createDecreasePositionReceivePUSD(market, 100n, 100n, PRICE_1, trader, {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -1562,13 +1685,12 @@ describe("PositionRouter", () => {
             });
             it("createDecreasePositionReceivePUSD again", async function () {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(
-                    ExecutionFeeType.DecreasePositionReceivePUSD,
-                );
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
                     .createDecreasePositionReceivePUSD(market, 100n, 100n, PRICE_1, trader, {
                         value: minExecutionFee,
+                        gasPrice,
                     });
                 expect(
                     await gasUsed(
@@ -1576,6 +1698,7 @@ describe("PositionRouter", () => {
                             .connect(trader)
                             .createDecreasePositionReceivePUSD(market, 200n, 200n, PRICE_1, trader, {
                                 value: minExecutionFee,
+                                gasPrice,
                             }),
                     ),
                 ).toMatchSnapshot();
@@ -1608,7 +1731,6 @@ describe("PositionRouter", () => {
         describe("#cancelDecreasePosition", () => {
             it("cancel when request not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1616,7 +1738,7 @@ describe("PositionRouter", () => {
                     sizeDelta: 100n,
                     acceptableIndexPrice: PRICE_1,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                 };
                 expect(await gasUsed(positionRouter.cancelDecreasePosition(param, trader.address))).toMatchSnapshot();
@@ -1624,10 +1746,10 @@ describe("PositionRouter", () => {
 
             it("cancel when executor cancel", async () => {
                 const {positionRouter, market, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1647,10 +1769,10 @@ describe("PositionRouter", () => {
 
             it("cancel when request owner calls", async () => {
                 const {positionRouter, market, trader} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 await mine(await positionRouter.minBlockDelayPublic());
                 const param = {
                     account: trader.address,
@@ -1672,7 +1794,6 @@ describe("PositionRouter", () => {
         describe("#executeDecreasePosition", () => {
             it("execute when request is not exists", async () => {
                 const {trader, market, positionRouter} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1680,7 +1801,7 @@ describe("PositionRouter", () => {
                     sizeDelta: 100n,
                     acceptableIndexPrice: PRICE_1,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                 };
                 expect(await gasUsed(positionRouter.executeDecreasePosition(param, trader.address))).toMatchSnapshot();
@@ -1688,10 +1809,10 @@ describe("PositionRouter", () => {
 
             it("execute when the market is weth", async () => {
                 const {positionRouter, weth, marketManager, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(weth, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(weth, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 await marketManager.setMinPrice(PRICE_1);
@@ -1712,12 +1833,43 @@ describe("PositionRouter", () => {
                 const id = await decreasePositionRequestId(param);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
-            it("should emit event and distribute funds when the market is not weth", async () => {
-                const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+
+            it("execute when the market is weth and refund execution fee", async () => {
+                const {positionRouter, weth, marketManager, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(weth, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
+                // set a delay value to prevent expire
+                await positionRouter.updateDelayValues(0n, 0n, 600n);
+                await marketManager.setMinPrice(PRICE_1);
+                await marketManager.setActualMarginDelta(80n);
+                const param = {
+                    account: trader.address,
+                    market: weth.target,
+                    marginDelta: 100n,
+                    sizeDelta: 100n,
+                    acceptableIndexPrice: PRICE_1,
+                    receiver: trader.address,
+                    executionFee: minExecutionFee,
+                    receivePUSD: false,
+                };
+                expect(
+                    await gasUsed(
+                        positionRouter
+                            .connect(executor)
+                            .executeDecreasePosition(param, executor.address, {gasPrice: gasPrice / 2n}),
+                    ),
+                ).toMatchSnapshot();
+                const id = await decreasePositionRequestId(param);
+                expect(await positionRouter.blockNumbers(id)).eq(0n);
+            });
+            it("should emit event and distribute funds when the market is not weth", async () => {
+                const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
+                const minExecutionFee = defaultExecutionFee;
+                await positionRouter
+                    .connect(trader)
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 await marketManager.setMinPrice(PRICE_1);
@@ -1739,12 +1891,13 @@ describe("PositionRouter", () => {
             });
             it("should emit event and distribute funds when receivePUSD is true", async () => {
                 const {positionRouter, market, marketManager, trader, executor} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(
-                    ExecutionFeeType.DecreasePositionReceivePUSD,
-                );
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePositionReceivePUSD(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePositionReceivePUSD(market, 100n, 100n, PRICE_1, trader, {
+                        value: minExecutionFee,
+                        gasPrice,
+                    });
                 // set a delay value to prevent expire
                 await positionRouter.updateDelayValues(0n, 0n, 600n);
                 await marketManager.setMinPrice(PRICE_1);
@@ -1771,14 +1924,14 @@ describe("PositionRouter", () => {
         describe("#executeOrCancelDecreasePosition", () => {
             it("cancel request if execution reverted", async () => {
                 const {trader, executor, positionRouter, market} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 // _maxBlockDelay is 0, execution will revert immediately
                 await positionRouter.updateDelayValues(0, 0, 0);
 
                 // all requests should be cancelled because they reverted
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
 
                 const param = {
                     account: trader.address,
@@ -1798,10 +1951,10 @@ describe("PositionRouter", () => {
             });
             it("execute request if execution passed", async () => {
                 const {trader, executor, positionRouter, market, marketManager} = await loadFixture(deployFixture);
-                const minExecutionFee = await positionRouter.minExecutionFees(ExecutionFeeType.DecreasePosition);
+                const minExecutionFee = defaultExecutionFee;
                 await positionRouter
                     .connect(trader)
-                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee});
+                    .createDecreasePosition(market, 100n, 100n, PRICE_1, trader, {value: minExecutionFee, gasPrice});
                 const param = {
                     account: trader.address,
                     market: market.target,
@@ -1817,7 +1970,9 @@ describe("PositionRouter", () => {
                 const tx = positionRouter.connect(executor).executeOrCancelDecreasePosition(param, executor.address);
                 expect(await gasUsed(tx)).toMatchSnapshot();
                 const id = await decreasePositionRequestId(param);
-                await expect(tx).to.emit(positionRouter, "DecreasePositionExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter, "DecreasePositionExecuted")
+                    .withArgs(id, executor.address, minExecutionFee);
                 expect(await positionRouter.blockNumbers(id)).eq(0n);
             });
         });

@@ -37,7 +37,8 @@ contract MarketManagerTest is BaseTest {
                     abi.encodeWithSelector(
                         FeeDistributorUpgradeable.initialize.selector,
                         address(this),
-                        0.8333333 * 1e7
+                        0.8333333 * 1e7,
+                        0
                     )
                 )
             )

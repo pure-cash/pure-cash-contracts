@@ -35,7 +35,8 @@ interface IPositionRouterCommon is IPUSDManagerCallback {
     }
 
     /// @notice Emitted when estimated gas limit updated
-    /// @param estimatedGasLimitType Type of the estimated gas limit, each kind of request has a different estimated gas limit
+    /// @param estimatedGasLimitType Type of the estimated gas limit,
+    /// each kind of request has a different estimated gas limit
     /// @param estimatedGasLimit Updated estimated gas limit
     event EstimatedGasLimitUpdated(EstimatedGasLimitType estimatedGasLimitType, uint256 estimatedGasLimit);
 
@@ -109,7 +110,8 @@ interface IPositionRouterCommon is IPUSDManagerCallback {
     function updateExecutionGasFeeMultiplier(uint24 multiplier) external;
 
     /// @notice Update estimated gas limit
-    /// @param estimatedGasLimitType Type of the estimated gas limit, each kind of request has a different estimated gas limit
+    /// @param estimatedGasLimitType Type of the estimated gas limit,
+    /// each kind of request has a different estimated gas limit
     /// @param estimatedGasLimit New estimated gas limit
     function updateEstimatedGasLimit(EstimatedGasLimitType estimatedGasLimitType, uint256 estimatedGasLimit) external;
 

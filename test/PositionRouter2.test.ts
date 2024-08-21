@@ -1,16 +1,19 @@
 import {loadFixture, mine, time} from "@nomicfoundation/hardhat-network-helpers";
 import {expect} from "chai";
-import {ethers, upgrades} from "hardhat";
+import {ethers, network, upgrades} from "hardhat";
 import {PUSDUpgradeable} from "../typechain-types";
 import {genERC20PermitData, resetAllowance} from "./shared/Permit";
 import {keccak256} from "@ethersproject/keccak256";
 import {defaultAbiCoder} from "@ethersproject/abi";
 import {IPositionRouter2} from "../typechain-types/contracts/plugins/PositionRouter2";
-import {positionRouter2ExecutionFeeTypes} from "./shared/PositionRouterFixture";
+import {ceilDiv, positionRouter2EstimatedGasLimitTypes} from "./shared/PositionRouterFixture";
+import {BASIS_POINTS_DIVISOR} from "./shared/Constants";
 
 describe("PositionRouter2", () => {
     const marketDecimals = 18n;
-    const minExecutionFee = ethers.parseUnits("0.0001", marketDecimals);
+    const defaultEstimatedGasLimit = 500_000n;
+    const gasPrice = ethers.parseUnits("1", "gwei");
+    const defaultExecutionFee = gasPrice * defaultEstimatedGasLimit;
 
     async function deployFixture() {
         const [owner, trader, executor, other] = await ethers.getSigners();
@@ -49,8 +52,8 @@ describe("PositionRouter2", () => {
             usd.target,
             marketManager.target,
             await weth.getAddress(),
-            await positionRouter2ExecutionFeeTypes(),
-            Array((await positionRouter2ExecutionFeeTypes()).length).fill(minExecutionFee),
+            await positionRouter2EstimatedGasLimitTypes(),
+            Array((await positionRouter2EstimatedGasLimitTypes()).length).fill(defaultEstimatedGasLimit),
         ]);
         await positionRouter2.waitForDeployment();
         await positionRouter2.updatePositionExecutor(executor.address, true);
@@ -77,16 +80,13 @@ describe("PositionRouter2", () => {
                 .to.be.revertedWithCustomError(positionRouter2, "InvalidCaller")
                 .withArgs(weth.target);
         });
-
         it("should pass", async () => {
             const {owner, executor, positionRouter2, weth} = await loadFixture(deployFixture);
             await expect(positionRouter2.createMintLPTETH(owner.address, 1e15, {value: 10n ** 18n})).to.be.emit(
                 positionRouter2,
                 "MintLPTCreated",
             );
-
             expect(await weth.balanceOf(await positionRouter2.getAddress())).to.be.eq(10n ** 18n - 10n ** 15n);
-
             await positionRouter2.connect(executor).cancelMintLPT(
                 {
                     account: owner.address,
@@ -99,7 +99,6 @@ describe("PositionRouter2", () => {
                 },
                 owner.address,
             );
-
             expect(await weth.balanceOf(await positionRouter2.getAddress())).to.be.eq(0n);
         });
     });
@@ -111,15 +110,12 @@ describe("PositionRouter2", () => {
                 positionRouter2.connect(other).updatePositionExecutor(other.address, true),
             ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
         });
-
         it("should emit correct event and update param", async () => {
             const {positionRouter2, other} = await loadFixture(deployFixture);
-
             await expect(positionRouter2.updatePositionExecutor(other.address, true))
                 .to.emit(positionRouter2, "PositionExecutorUpdated")
                 .withArgs(other.address, true);
             expect(await positionRouter2.positionExecutors(other.address)).to.eq(true);
-
             await expect(positionRouter2.updatePositionExecutor(other.address, false))
                 .to.emit(positionRouter2, "PositionExecutorUpdated")
                 .withArgs(other.address, false);
@@ -135,7 +131,6 @@ describe("PositionRouter2", () => {
                 "Forbidden",
             );
         });
-
         it("should emit correct event and update param", async () => {
             const {positionRouter2} = await loadFixture(deployFixture);
             await expect(positionRouter2.updateDelayValues(10n, 20n, 30n))
@@ -147,26 +142,23 @@ describe("PositionRouter2", () => {
         });
     });
 
-    describe("#updateMinExecutionFee", async () => {
+    describe("#updateEstimatedGasLimit", async () => {
         it("should revert with 'Forbidden' if caller is not gov", async () => {
             const {other, positionRouter2} = await loadFixture(deployFixture);
-            await expect(positionRouter2.connect(other).updateMinExecutionFee(0, 3000n)).to.be.revertedWithCustomError(
-                positionRouter2,
-                "Forbidden",
-            );
+            await expect(
+                positionRouter2.connect(other).updateEstimatedGasLimit(0, 3000n),
+            ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
         });
-
         it("should emit correct event and update params", async () => {
             const {positionRouter2} = await loadFixture(deployFixture);
-            await expect(positionRouter2.updateMinExecutionFee(1, 8000n))
-                .to.emit(positionRouter2, "MinExecutionFeeUpdated")
+            await expect(positionRouter2.updateEstimatedGasLimit(1, 8000n))
+                .to.emit(positionRouter2, "EstimatedGasLimitUpdated")
                 .withArgs(1, 8000n);
-            expect(await positionRouter2.minExecutionFees(0)).to.eq(minExecutionFee);
-            expect(await positionRouter2.minExecutionFees(1)).to.eq(8000n);
-            expect(await positionRouter2.minExecutionFees(2)).to.eq(minExecutionFee);
-            expect(await positionRouter2.minExecutionFees(3)).to.eq(minExecutionFee);
-            expect(await positionRouter2.minExecutionFees(4)).to.eq(minExecutionFee);
-            expect(await positionRouter2.minExecutionFees(5)).to.eq(0n);
+            expect(await positionRouter2.estimatedGasLimits(0)).to.eq(defaultEstimatedGasLimit);
+            expect(await positionRouter2.estimatedGasLimits(1)).to.eq(8000n);
+            expect(await positionRouter2.estimatedGasLimits(2)).to.eq(defaultEstimatedGasLimit);
+            expect(await positionRouter2.estimatedGasLimits(3)).to.eq(defaultEstimatedGasLimit);
+            expect(await positionRouter2.estimatedGasLimits(4)).to.eq(0n);
         });
     });
 
@@ -177,12 +169,60 @@ describe("PositionRouter2", () => {
                 positionRouter2.connect(other).updateExecutionGasLimit(2000000n),
             ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
         });
-
         it("should update param", async () => {
             const {positionRouter2} = await loadFixture(deployFixture);
-
             await positionRouter2.updateExecutionGasLimit(2000000n);
             expect(await positionRouter2.executionGasLimit()).to.eq(2000000n);
+        });
+    });
+
+    describe("#updateEtherTransferGasLimit", async () => {
+        it("should revert with 'Forbidden' if caller is not gov", async () => {
+            const {other, positionRouter2} = await loadFixture(deployFixture);
+            await expect(
+                positionRouter2.connect(other).updateEtherTransferGasLimit(2000000n),
+            ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
+        });
+        it("should update param", async () => {
+            const {positionRouter2} = await loadFixture(deployFixture);
+            await positionRouter2.updateEtherTransferGasLimit(2000000n);
+            expect(await positionRouter2.etherTransferGasLimit()).to.eq(2000000n);
+        });
+    });
+
+    describe("#updateEstimatedGasFeeMultiplier", async () => {
+        it("should revert with 'Forbidden' if caller is not gov", async () => {
+            const {other, positionRouter2} = await loadFixture(deployFixture);
+            const multiplierAfter = (BASIS_POINTS_DIVISOR * 8n) / 10n;
+            await expect(
+                positionRouter2.connect(other).updateEstimatedGasFeeMultiplier(multiplierAfter),
+            ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
+        });
+
+        it("should pass", async () => {
+            const {positionRouter2} = await loadFixture(deployFixture);
+            const multiplierAfter = (BASIS_POINTS_DIVISOR * 8n) / 10n;
+            const tx = positionRouter2.updateEstimatedGasFeeMultiplier(multiplierAfter);
+            await expect(tx).to.emit(positionRouter2, "EstimatedGasFeeMultiplierUpdated").withArgs(multiplierAfter);
+            expect(await positionRouter2.estimatedGasFeeMultiplier()).to.eq(multiplierAfter);
+        });
+    });
+
+    describe("#updateExecutionGasFeeMultiplier", async () => {
+        it("should revert with 'Forbidden' if caller is not gov", async () => {
+            const {other, positionRouter2} = await loadFixture(deployFixture);
+            const multiplierAfter = (BASIS_POINTS_DIVISOR * 8n) / 10n;
+            await expect(
+                positionRouter2.connect(other).updateExecutionGasFeeMultiplier(multiplierAfter),
+            ).to.be.revertedWithCustomError(positionRouter2, "Forbidden");
+        });
+
+        it("should pass", async () => {
+            const {positionRouter2} = await loadFixture(deployFixture);
+            const multiplierAfter = (BASIS_POINTS_DIVISOR * 8n) / 10n;
+            const tx = positionRouter2.updateExecutionGasFeeMultiplier(multiplierAfter);
+            await expect(tx).to.emit(positionRouter2, "ExecutionGasFeeMultiplierUpdated").withArgs(multiplierAfter);
+            expect(await positionRouter2.executionGasFeeMultiplier()).to.eq(multiplierAfter);
         });
     });
 
@@ -192,27 +232,24 @@ describe("PositionRouter2", () => {
             it("should revert if msg.value is less than minExecutionFee", async function () {
                 const {trader, market, positionRouter2} = await loadFixture(deployFixture);
 
-                let minExecutionFeeAfter = ethers.parseUnits("0.0002", marketDecimals);
-                await expect(positionRouter2.updateMinExecutionFee(0, minExecutionFeeAfter))
-                    .to.emit(positionRouter2, "MinExecutionFeeUpdated")
-                    .withArgs(0, minExecutionFeeAfter);
-
-                const value = minExecutionFee;
+                const value = defaultExecutionFee - 1n;
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {value: value}),
+                    positionRouter2.connect(trader).createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
+                        value: value,
+                        gasPrice,
+                    }),
                 )
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFeeAfter);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should revert if allowance is insufficient and permitData is empty", async function () {
                 const {trader, market, marketManager, positionRouter2} = await loadFixture(deployFixture);
                 await resetAllowance(market, trader, await marketManager.getAddress());
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {value: minExecutionFee}),
+                    positionRouter2.connect(trader).createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    }),
                 )
                     .to.be.revertedWithCustomError(market, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, liquidityDelta);
@@ -224,7 +261,8 @@ describe("PositionRouter2", () => {
                     positionRouter2
                         .connect(trader)
                         .createMintLPT(market.target, liquidityDelta, trader.address, "0xabcdef", {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         }),
                 ).to.be.reverted;
             });
@@ -241,7 +279,8 @@ describe("PositionRouter2", () => {
                     positionRouter2
                         .connect(trader)
                         .createMintLPT(market.target, liquidityDelta, trader.address, permitData, {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         }),
                 )
                     .to.be.revertedWithCustomError(market, "ERC20InsufficientAllowance")
@@ -261,17 +300,26 @@ describe("PositionRouter2", () => {
                     const tx = await positionRouter2
                         .connect(trader)
                         .createMintLPT(market.target, liquidityDelta, trader.address, permitData, {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         });
                     let idExpected = keccak256(
                         defaultAbiCoder.encode(
                             ["address", "address", "uint96", "uint256", "address", "bool", "uint96"],
-                            [trader.address, market.target, liquidityDelta, minExecutionFee, trader.address, false, 0n],
+                            [
+                                trader.address,
+                                market.target,
+                                liquidityDelta,
+                                defaultExecutionFee,
+                                trader.address,
+                                false,
+                                0n,
+                            ],
                         ),
                     );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(
                         market,
@@ -284,7 +332,7 @@ describe("PositionRouter2", () => {
                             trader.address,
                             market.target,
                             liquidityDelta,
-                            minExecutionFee,
+                            defaultExecutionFee,
                             trader.address,
                             false,
                             0n,
@@ -300,20 +348,21 @@ describe("PositionRouter2", () => {
                     const tx = await positionRouter2
                         .connect(trader)
                         .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         });
                     let id = mintLPTId({
                         account: trader.address,
                         market: market.target,
                         liquidityDelta: liquidityDelta,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receiver: trader.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0n,
                     });
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(
                         market,
@@ -326,7 +375,7 @@ describe("PositionRouter2", () => {
                             trader.address,
                             market,
                             liquidityDelta,
-                            minExecutionFee,
+                            defaultExecutionFee,
                             trader.address,
                             false,
                             0n,
@@ -340,22 +389,24 @@ describe("PositionRouter2", () => {
                 const tx = await positionRouter2
                     .connect(trader)
                     .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee,
+                        value: defaultExecutionFee,
+                        gasPrice,
                     });
                 let id = mintLPTId({
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
                 });
                 expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {value: minExecutionFee}),
+                    positionRouter2.connect(trader).createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    }),
                 )
                     .to.be.revertedWithCustomError(positionRouter2, "ConflictRequests")
                     .withArgs(id);
@@ -365,13 +416,14 @@ describe("PositionRouter2", () => {
                 const tx = await positionRouter2
                     .connect(trader)
                     .createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee,
+                        value: defaultExecutionFee,
+                        gasPrice,
                     });
                 let id = mintLPTId({
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -379,7 +431,8 @@ describe("PositionRouter2", () => {
                 expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
                 await expect(
                     positionRouter2.connect(trader).createMintLPT(market.target, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee + BigInt(1),
+                        value: defaultExecutionFee + BigInt(1),
+                        gasPrice,
                     }),
                 ).not.to.be.reverted;
             });
@@ -387,41 +440,46 @@ describe("PositionRouter2", () => {
         describe("#createMintLPTETH", () => {
             it("should revert if msg.value is less than executionFee", async function () {
                 const {trader, positionRouter2} = await loadFixture(deployFixture);
-
-                let minExecutionFeeAfter = ethers.parseUnits("0.0002", marketDecimals);
-                await expect(positionRouter2.updateMinExecutionFee(1, minExecutionFeeAfter))
-                    .to.emit(positionRouter2, "MinExecutionFeeUpdated")
-                    .withArgs(1, minExecutionFeeAfter);
-
-                const value = minExecutionFee;
-
-                await expect(positionRouter2.connect(trader).createMintLPTETH(trader.address, minExecutionFee, {value}))
+                const value = defaultExecutionFee - 1n;
+                await expect(
+                    positionRouter2
+                        .connect(trader)
+                        .createMintLPTETH(trader.address, defaultExecutionFee, {value, gasPrice}),
+                )
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFeeAfter);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should revert if executionFee is less than minExecutionFee", async function () {
                 const {trader, positionRouter2} = await loadFixture(deployFixture);
-                const value = minExecutionFee - 1n;
-                await expect(positionRouter2.connect(trader).createMintLPTETH(trader.address, value, {value}))
+                const value = defaultExecutionFee - 1n;
+                await expect(positionRouter2.connect(trader).createMintLPTETH(trader.address, value, {value, gasPrice}))
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFee);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should pass", async function () {
                 const {trader, weth, positionRouter2} = await loadFixture(deployFixture);
                 let liquidityDelta = 100n;
                 for (let i = 0; i < 10; i++) {
                     liquidityDelta = liquidityDelta + BigInt(i);
-                    const value = minExecutionFee + liquidityDelta;
+                    const value = defaultExecutionFee + liquidityDelta;
                     const tx = await positionRouter2
                         .connect(trader)
-                        .createMintLPTETH(trader.address, minExecutionFee, {value});
-                    await expect(tx).to.changeEtherBalances([trader, positionRouter2], [-value, minExecutionFee]);
+                        .createMintLPTETH(trader.address, defaultExecutionFee, {value, gasPrice});
+                    await expect(tx).to.changeEtherBalances([trader, positionRouter2], [-value, defaultExecutionFee]);
                     await expect(tx).to.changeTokenBalance(weth, positionRouter2, liquidityDelta);
 
                     let idExpected = keccak256(
                         defaultAbiCoder.encode(
                             ["address", "address", "uint96", "uint256", "address", "bool", "uint96"],
-                            [trader.address, weth.target, liquidityDelta, minExecutionFee, trader.address, false, 0n],
+                            [
+                                trader.address,
+                                weth.target,
+                                liquidityDelta,
+                                defaultExecutionFee,
+                                trader.address,
+                                false,
+                                0n,
+                            ],
                         ),
                     );
                     await expect(tx)
@@ -430,7 +488,7 @@ describe("PositionRouter2", () => {
                             trader.address,
                             weth,
                             liquidityDelta,
-                            minExecutionFee,
+                            defaultExecutionFee,
                             trader.address,
                             false,
                             0n,
@@ -443,19 +501,14 @@ describe("PositionRouter2", () => {
             it("should revert if executionFee is less than minExecutionFee", async function () {
                 const {trader, market, positionRouter2} = await loadFixture(deployFixture);
 
-                let minExecutionFeeAfter = ethers.parseUnits("0.0002", marketDecimals);
-                await expect(positionRouter2.updateMinExecutionFee(2, minExecutionFeeAfter))
-                    .to.emit(positionRouter2, "MinExecutionFeeUpdated")
-                    .withArgs(2, minExecutionFeeAfter);
-
-                const value = minExecutionFee;
+                const value = defaultExecutionFee - 1n;
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {value}),
+                        .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {value, gasPrice}),
                 )
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFeeAfter);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should revert if allowance is insufficient and permitData is empty", async function () {
                 const {trader, market, usd, marketManager, positionRouter2} = await loadFixture(deployFixture);
@@ -463,7 +516,10 @@ describe("PositionRouter2", () => {
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {value: minExecutionFee}),
+                        .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {
+                            value: defaultExecutionFee,
+                            gasPrice,
+                        }),
                 )
                     .to.be.revertedWithCustomError(usd, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, 100n);
@@ -475,7 +531,8 @@ describe("PositionRouter2", () => {
                     positionRouter2
                         .connect(trader)
                         .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0xabcdef", {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         }),
                 ).to.be.reverted;
             });
@@ -487,7 +544,8 @@ describe("PositionRouter2", () => {
                     positionRouter2
                         .connect(trader)
                         .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, permitData, {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         }),
                 )
                     .to.be.revertedWithCustomError(usd, "ERC20InsufficientAllowance")
@@ -507,18 +565,19 @@ describe("PositionRouter2", () => {
                     const tx = await positionRouter2
                         .connect(trader)
                         .createMintLPTPayPUSD(market.target, pusdAmount, trader.address, 0n, permitData, {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         });
 
                     let idExpected = keccak256(
                         defaultAbiCoder.encode(
                             ["address", "address", "uint96", "uint256", "address", "bool", "uint96"],
-                            [trader.address, market.target, pusdAmount, minExecutionFee, trader.address, true, 0n],
+                            [trader.address, market.target, pusdAmount, defaultExecutionFee, trader.address, true, 0n],
                         ),
                     );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(usd, [trader, positionRouter2], [-pusdAmount, pusdAmount]);
                     await expect(tx)
@@ -527,7 +586,7 @@ describe("PositionRouter2", () => {
                             trader.address,
                             market.target,
                             pusdAmount,
-                            minExecutionFee,
+                            defaultExecutionFee,
                             trader.address,
                             true,
                             0n,
@@ -544,11 +603,12 @@ describe("PositionRouter2", () => {
                     const tx = await positionRouter2
                         .connect(trader)
                         .createMintLPTPayPUSD(market.target, liquidityDelta, trader.address, 0n, "0x", {
-                            value: minExecutionFee,
+                            value: defaultExecutionFee,
+                            gasPrice,
                         });
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(
                         usd,
@@ -558,7 +618,15 @@ describe("PositionRouter2", () => {
                     let idExpected = keccak256(
                         defaultAbiCoder.encode(
                             ["address", "address", "uint96", "uint256", "address", "bool", "uint96"],
-                            [trader.address, market.target, liquidityDelta, minExecutionFee, trader.address, true, 0n],
+                            [
+                                trader.address,
+                                market.target,
+                                liquidityDelta,
+                                defaultExecutionFee,
+                                trader.address,
+                                true,
+                                0n,
+                            ],
                         ),
                     );
                     await expect(tx)
@@ -567,7 +635,7 @@ describe("PositionRouter2", () => {
                             trader.address,
                             market.target,
                             liquidityDelta,
-                            minExecutionFee,
+                            defaultExecutionFee,
                             trader.address,
                             true,
                             0n,
@@ -582,7 +650,8 @@ describe("PositionRouter2", () => {
                     const {positionRouter2, market, trader, other} = await loadFixture(deployFixture);
                     // create a new request
                     await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee,
+                        value: defaultExecutionFee,
+                        gasPrice,
                     });
 
                     await expect(
@@ -591,7 +660,7 @@ describe("PositionRouter2", () => {
                                 account: trader.address,
                                 market: market.target,
                                 liquidityDelta: liquidityDelta,
-                                executionFee: minExecutionFee,
+                                executionFee: defaultExecutionFee,
                                 receiver: trader.address,
                                 payPUSD: false,
                                 minReceivedFromBurningPUSD: 0n,
@@ -607,28 +676,24 @@ describe("PositionRouter2", () => {
                     await positionRouter2.updateDelayValues(10n, 3000n, 6000n);
                     // create a new request
                     await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee,
+                        value: defaultExecutionFee,
+                        gasPrice,
                     });
-
                     let arg = {
                         account: trader.address,
                         market: market.target,
                         liquidityDelta: liquidityDelta,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receiver: trader.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0n,
                     };
-
                     let idExpected = mintLPTId(arg);
-
                     // should fail to cancel
                     await positionRouter2.connect(executor).cancelMintLPT(arg, executor.address);
                     expect(await positionRouter2.blockNumbers(idExpected)).to.eq((await time.latestBlock()) - 1);
-
                     // mine 10 blocks
                     await mine(10);
-
                     // should be cancelled
                     await positionRouter2.connect(executor).cancelMintLPT(arg, executor.address);
                     expect(await positionRouter2.blockNumbers(idExpected)).to.eq(0);
@@ -639,15 +704,15 @@ describe("PositionRouter2", () => {
                     await expect(positionRouter2.updateDelayValues(10n, 100n, 600n)).not.to.be.reverted;
                     // create a new request
                     await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                        value: minExecutionFee,
+                        value: defaultExecutionFee,
+                        gasPrice,
                     });
                     const earliest = (await time.latestBlock()) + 100;
-
                     let arg = {
                         account: trader.address,
                         market: market.target,
                         liquidityDelta: liquidityDelta,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receiver: trader.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0n,
@@ -655,16 +720,22 @@ describe("PositionRouter2", () => {
                     await expect(positionRouter2.connect(trader).cancelMintLPT(arg, trader.address))
                         .to.be.revertedWithCustomError(positionRouter2, "TooEarly")
                         .withArgs(earliest);
-
                     await mine(100n);
                     let idExpected = keccak256(
                         defaultAbiCoder.encode(
                             ["address", "address", "uint96", "uint256", "address", "bool", "uint96"],
-                            [trader.address, market.target, liquidityDelta, minExecutionFee, trader.address, false, 0n],
+                            [
+                                trader.address,
+                                market.target,
+                                liquidityDelta,
+                                defaultExecutionFee,
+                                trader.address,
+                                false,
+                                0n,
+                            ],
                         ),
                     );
                     expect(await positionRouter2.blockNumbers(idExpected)).to.not.eq(0n);
-
                     await positionRouter2.connect(trader).cancelMintLPT(arg, trader.address);
                     expect(await positionRouter2.blockNumbers(idExpected)).to.eq(0n);
                 });
@@ -677,7 +748,7 @@ describe("PositionRouter2", () => {
                         account: owner.address,
                         market: weth.target,
                         liquidityDelta: 0n,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receiver: owner.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0n,
@@ -689,7 +760,8 @@ describe("PositionRouter2", () => {
             it("should revert with 'Forbidden' if caller is not request owner", async () => {
                 const {positionRouter2, trader, other, market} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 await expect(
                     positionRouter2.connect(other).cancelMintLPT(
@@ -697,7 +769,7 @@ describe("PositionRouter2", () => {
                             account: trader.address,
                             market: market.target,
                             liquidityDelta: liquidityDelta,
-                            executionFee: minExecutionFee,
+                            executionFee: defaultExecutionFee,
                             receiver: trader.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0n,
@@ -710,13 +782,14 @@ describe("PositionRouter2", () => {
             it("should be ok if executor cancel and market is not weth", async () => {
                 const {positionRouter2, market, trader, executor} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -724,7 +797,7 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).cancelMintLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor],
-                    [-minExecutionFee, minExecutionFee],
+                    [-defaultExecutionFee, defaultExecutionFee],
                 );
                 await expect(tx).to.changeTokenBalances(
                     market,
@@ -739,14 +812,15 @@ describe("PositionRouter2", () => {
             });
             it("should be ok if executor cancel and market is weth", async () => {
                 const {positionRouter2, weth, trader, executor} = await loadFixture(deployFixture);
-                await positionRouter2
-                    .connect(trader)
-                    .createMintLPTETH(trader.address, minExecutionFee, {value: minExecutionFee + 100n});
+                await positionRouter2.connect(trader).createMintLPTETH(trader.address, defaultExecutionFee, {
+                    value: defaultExecutionFee + 100n,
+                    gasPrice,
+                });
                 let idParam = {
                     account: trader.address,
                     market: weth.target,
                     liquidityDelta: 100n,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -754,7 +828,7 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).cancelMintLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor, trader],
-                    [-minExecutionFee, minExecutionFee, 100n],
+                    [-defaultExecutionFee, defaultExecutionFee, 100n],
                 );
                 await expect(tx).to.changeTokenBalance(weth, positionRouter2, -100n);
                 let id = mintLPTId(idParam);
@@ -767,12 +841,15 @@ describe("PositionRouter2", () => {
                 const {positionRouter2, market, usd, trader, executor} = await loadFixture(deployFixture);
                 await positionRouter2
                     .connect(trader)
-                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {value: minExecutionFee});
+                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: 100n,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: true,
                     minReceivedFromBurningPUSD: 0n,
@@ -781,7 +858,7 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).cancelMintLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor],
-                    [-minExecutionFee, minExecutionFee],
+                    [-defaultExecutionFee, defaultExecutionFee],
                 );
                 await expect(tx).to.changeTokenBalances(usd, [positionRouter2, trader], [-100n, 100n]);
                 await expect(tx).to.emit(positionRouter2, "MintLPTCancelled").withArgs(id, executor.address);
@@ -793,13 +870,14 @@ describe("PositionRouter2", () => {
             it("should be ok if request owner calls and market is not weth", async () => {
                 const {positionRouter2, market, trader} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -807,7 +885,10 @@ describe("PositionRouter2", () => {
                 let id = mintLPTId(idParam);
                 await mine(await positionRouter2.minBlockDelayPublic());
                 const tx = positionRouter2.connect(trader).cancelMintLPT(idParam, trader.address);
-                await expect(tx).to.changeEtherBalances([positionRouter2, trader], [-minExecutionFee, minExecutionFee]);
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, trader],
+                    [-defaultExecutionFee, defaultExecutionFee],
+                );
                 await expect(tx).to.changeTokenBalances(
                     market,
                     [positionRouter2, trader],
@@ -819,14 +900,15 @@ describe("PositionRouter2", () => {
             });
             it("should be ok if request owner calls and market is weth", async () => {
                 const {positionRouter2, weth, trader} = await loadFixture(deployFixture);
-                await positionRouter2
-                    .connect(trader)
-                    .createMintLPTETH(trader.address, minExecutionFee, {value: minExecutionFee + 100n});
+                await positionRouter2.connect(trader).createMintLPTETH(trader.address, defaultExecutionFee, {
+                    value: defaultExecutionFee + 100n,
+                    gasPrice,
+                });
                 let idParam = {
                     account: trader.address,
                     market: weth.target,
                     liquidityDelta: 100n,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -836,7 +918,7 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(trader).cancelMintLPT(idParam, trader.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, trader],
-                    [-minExecutionFee, minExecutionFee + 100n],
+                    [-defaultExecutionFee, defaultExecutionFee + 100n],
                 );
                 await expect(tx).to.changeTokenBalance(weth, positionRouter2, -100n);
                 await expect(tx).to.emit(positionRouter2, "MintLPTCancelled").withArgs(id, trader.address);
@@ -847,12 +929,15 @@ describe("PositionRouter2", () => {
                 const {positionRouter2, market, usd, trader} = await loadFixture(deployFixture);
                 await positionRouter2
                     .connect(trader)
-                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {value: minExecutionFee});
+                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 0n, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: 100n,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: true,
                     minReceivedFromBurningPUSD: 0n,
@@ -860,7 +945,10 @@ describe("PositionRouter2", () => {
                 await mine(await positionRouter2.minBlockDelayPublic());
                 const tx = positionRouter2.connect(trader).cancelMintLPT(idParam, trader.address);
                 await expect(tx).to.changeTokenBalances(usd, [positionRouter2, trader], [-100n, 100n]);
-                await expect(tx).to.changeEtherBalances([positionRouter2, trader], [-minExecutionFee, minExecutionFee]);
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, trader],
+                    [-defaultExecutionFee, defaultExecutionFee],
+                );
                 let id = mintLPTId(idParam);
                 await expect(tx).to.emit(positionRouter2, "MintLPTCancelled").withArgs(id, trader.address);
                 let blockNumber = await positionRouter2.blockNumbers(id);
@@ -875,7 +963,7 @@ describe("PositionRouter2", () => {
                         account: trader.address,
                         market: weth.target,
                         liquidityDelta: 100n,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receiver: trader.address,
                         payPUSD: false,
                         minReceivedFromBurningPUSD: 0n,
@@ -887,13 +975,14 @@ describe("PositionRouter2", () => {
             it("should revert with 'Forbidden' if caller is not executor nor request owner", async () => {
                 const {trader, other, market, positionRouter2} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -908,13 +997,14 @@ describe("PositionRouter2", () => {
                 const {positionRouter2, market, trader, executor} = await loadFixture(deployFixture);
                 await positionRouter2.updateDelayValues(0n, 0n, 600n);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -929,13 +1019,14 @@ describe("PositionRouter2", () => {
             it("should revert with 'TooEarly' if someone who are not the executor executes his own request and pass if sufficient time elapsed", async () => {
                 const {positionRouter2, market, trader} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -954,12 +1045,15 @@ describe("PositionRouter2", () => {
                 const {positionRouter2, marketManager, market, trader, executor} = await loadFixture(deployFixture);
                 await positionRouter2
                     .connect(trader)
-                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 200n, "0x", {value: minExecutionFee});
+                    .createMintLPTPayPUSD(market.target, 100n, trader.address, 200n, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: 100n,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: true,
                     minReceivedFromBurningPUSD: 200n,
@@ -976,14 +1070,15 @@ describe("PositionRouter2", () => {
             it("should emit event and distribute funds", async () => {
                 const {positionRouter2, market, marketManager, trader, executor} = await loadFixture(deployFixture);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
 
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -994,7 +1089,7 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).executeMintLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor],
-                    [-minExecutionFee, minExecutionFee],
+                    [-defaultExecutionFee, defaultExecutionFee],
                 );
                 await expect(tx).to.changeTokenBalances(
                     market,
@@ -1002,7 +1097,93 @@ describe("PositionRouter2", () => {
                     [-liquidityDelta, liquidityDelta],
                 );
                 let id = mintLPTId(idParam);
-                await expect(tx).to.emit(positionRouter2, "MintLPTExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter2, "MintLPTExecuted")
+                    .withArgs(id, executor.address, defaultExecutionFee);
+                // delete request
+                let blockNumber = await positionRouter2.blockNumbers(id);
+                expect(blockNumber).eq(0);
+            });
+
+            it("should refund execution fee if tx.gasprice is less than tx.gasprice when the request was submitted", async () => {
+                const {positionRouter2, market, marketManager, trader, executor} = await loadFixture(deployFixture);
+                await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
+                    value: defaultExecutionFee,
+                    gasPrice,
+                });
+                let idParam = {
+                    account: trader.address,
+                    market: market.target,
+                    liquidityDelta: liquidityDelta,
+                    executionFee: defaultExecutionFee,
+                    receiver: trader.address,
+                    payPUSD: false,
+                    minReceivedFromBurningPUSD: 0n,
+                };
+                await positionRouter2.updateDelayValues(0n, 0n, 600n);
+                // Note that the gasprice here
+                const tx = positionRouter2
+                    .connect(executor)
+                    .executeMintLPT(idParam, executor.address, {gasPrice: gasPrice / 2n});
+
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, executor, trader],
+                    [-defaultExecutionFee, defaultExecutionFee / 2n, defaultExecutionFee / 2n],
+                );
+                await expect(tx).to.changeTokenBalances(
+                    market,
+                    [positionRouter2, marketManager],
+                    [-liquidityDelta, liquidityDelta],
+                );
+                let id = mintLPTId(idParam);
+                await expect(tx)
+                    .to.emit(positionRouter2, "MintLPTExecuted")
+                    .withArgs(id, executor.address, defaultExecutionFee / 2n);
+                // delete request
+                let blockNumber = await positionRouter2.blockNumbers(id);
+                expect(blockNumber).eq(0);
+            });
+
+            it("should refund execution fee if tx.gasprice is less than tx.gasprice when the request was submitted according to the configured multiplier", async () => {
+                const {owner, positionRouter2, market, marketManager, trader, executor} =
+                    await loadFixture(deployFixture);
+
+                await positionRouter2.connect(owner).updateExecutionGasFeeMultiplier((BASIS_POINTS_DIVISOR * 3n) / 2n);
+
+                await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
+                    value: defaultExecutionFee,
+                    gasPrice,
+                });
+                let idParam = {
+                    account: trader.address,
+                    market: market.target,
+                    liquidityDelta: liquidityDelta,
+                    executionFee: defaultExecutionFee,
+                    receiver: trader.address,
+                    payPUSD: false,
+                    minReceivedFromBurningPUSD: 0n,
+                };
+                await positionRouter2.updateDelayValues(0n, 0n, 600n);
+                // Note that the gasprice here
+                // The actual gas fee is  0.75x of the paid, the user will be refunded 0.25x
+                const tx = positionRouter2
+                    .connect(executor)
+                    .executeMintLPT(idParam, executor.address, {gasPrice: gasPrice / 2n});
+
+                const executionFee = ceilDiv(defaultExecutionFee * 3n, 4n);
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, executor, trader],
+                    [-defaultExecutionFee, executionFee, defaultExecutionFee - executionFee],
+                );
+                await expect(tx).to.changeTokenBalances(
+                    market,
+                    [positionRouter2, marketManager],
+                    [-liquidityDelta, liquidityDelta],
+                );
+                let id = mintLPTId(idParam);
+                await expect(tx)
+                    .to.emit(positionRouter2, "MintLPTExecuted")
+                    .withArgs(id, executor.address, executionFee);
                 // delete request
                 let blockNumber = await positionRouter2.blockNumbers(id);
                 expect(blockNumber).eq(0);
@@ -1017,7 +1198,7 @@ describe("PositionRouter2", () => {
                             account: trader.address,
                             market: weth.target,
                             liquidityDelta: 100n,
-                            executionFee: minExecutionFee,
+                            executionFee: defaultExecutionFee,
                             receiver: trader.address,
                             payPUSD: false,
                             minReceivedFromBurningPUSD: 0n,
@@ -1032,13 +1213,14 @@ describe("PositionRouter2", () => {
                 // _maxBlockDelay is 0, execution will revert immediately
                 await positionRouter2.updateDelayValues(0, 0, 0);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -1058,13 +1240,14 @@ describe("PositionRouter2", () => {
                 const {trader, executor, positionRouter2, market} = await loadFixture(deployFixture);
                 await positionRouter2.updateDelayValues(20, 0, 100);
                 await positionRouter2.connect(trader).createMintLPT(market, liquidityDelta, trader.address, "0x", {
-                    value: minExecutionFee,
+                    value: defaultExecutionFee,
+                    gasPrice,
                 });
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     liquidityDelta: liquidityDelta,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receiver: trader.address,
                     payPUSD: false,
                     minReceivedFromBurningPUSD: 0n,
@@ -1082,16 +1265,13 @@ describe("PositionRouter2", () => {
         describe("#createBurnLPT", () => {
             it("should revert if msg.value is less than minExecutionFee", async () => {
                 const {positionRouter2, market, trader} = await loadFixture(deployFixture);
-
-                let minExecutionFeeAfter = ethers.parseUnits("0.0002", marketDecimals);
-                await expect(positionRouter2.updateMinExecutionFee(3, minExecutionFeeAfter))
-                    .to.emit(positionRouter2, "MinExecutionFeeUpdated")
-                    .withArgs(3, minExecutionFeeAfter);
-                const value = minExecutionFee;
+                const value = defaultExecutionFee - 1n;
                 // insufficient execution fee
-                await expect(positionRouter2.connect(trader).createBurnLPT(market, 10n, 0n, trader, "0x", {value}))
+                await expect(
+                    positionRouter2.connect(trader).createBurnLPT(market, 10n, 0n, trader, "0x", {value, gasPrice}),
+                )
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFeeAfter);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should revert if allowance is insufficient and permitData is empty", async () => {
                 const {positionRouter2, market, lpToken, trader, marketManager} = await loadFixture(deployFixture);
@@ -1100,7 +1280,7 @@ describe("PositionRouter2", () => {
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, 100n, 0n, trader, "0x", {value: minExecutionFee}),
+                        .createBurnLPT(market, 100n, 0n, trader, "0x", {value: defaultExecutionFee, gasPrice}),
                 )
                     .to.be.revertedWithCustomError(lpToken, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, 100n);
@@ -1112,7 +1292,7 @@ describe("PositionRouter2", () => {
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, 100n, 0n, trader, "0xabcdef", {value: minExecutionFee}),
+                        .createBurnLPT(market, 100n, 0n, trader, "0xabcdef", {value: defaultExecutionFee, gasPrice}),
                 ).to.be.reverted;
             });
             it("should revert if allowance is insufficient and permitData is other's", async () => {
@@ -1124,7 +1304,7 @@ describe("PositionRouter2", () => {
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, 100n, 0n, trader, permitData, {value: minExecutionFee}),
+                        .createBurnLPT(market, 100n, 0n, trader, permitData, {value: defaultExecutionFee, gasPrice}),
                 )
                     .to.be.revertedWithCustomError(lpToken, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, 100n);
@@ -1144,24 +1324,34 @@ describe("PositionRouter2", () => {
                     await marketManager.mintLPToken(market.target, trader.address, amount);
                     const tx = positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, amount, 0n, trader, permitData, {value: minExecutionFee});
+                        .createBurnLPT(market, amount, 0n, trader, permitData, {value: defaultExecutionFee, gasPrice});
                     let idParam = {
                         account: trader.address,
                         market: market.target,
                         amount: amount,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: false,
                         minPUSDReceived: 0n,
                     };
                     let id = burnLPTId(idParam);
                     await expect(tx)
                         .to.emit(positionRouter2, "BurnLPTCreated")
-                        .withArgs(trader.address, market, amount, 0n, trader.address, minExecutionFee, false, 0n, id);
+                        .withArgs(
+                            trader.address,
+                            market,
+                            amount,
+                            0n,
+                            trader.address,
+                            defaultExecutionFee,
+                            false,
+                            0n,
+                            id,
+                        );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(lpToken, [trader, positionRouter2], [-amount, amount]);
                     expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
@@ -1174,24 +1364,34 @@ describe("PositionRouter2", () => {
                     await marketManager.mintLPToken(market.target, trader.address, amount);
                     const tx = positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, amount, 0n, trader, "0x", {value: minExecutionFee});
+                        .createBurnLPT(market, amount, 0n, trader, "0x", {value: defaultExecutionFee, gasPrice});
                     let idParam = {
                         account: trader.address,
                         market: market.target,
                         amount: amount,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: false,
                         minPUSDReceived: 0,
                     };
                     let id = burnLPTId(idParam);
                     await expect(tx)
                         .to.emit(positionRouter2, "BurnLPTCreated")
-                        .withArgs(trader.address, market, amount, 0n, trader.address, minExecutionFee, false, 0n, id);
+                        .withArgs(
+                            trader.address,
+                            market,
+                            amount,
+                            0n,
+                            trader.address,
+                            defaultExecutionFee,
+                            false,
+                            0n,
+                            id,
+                        );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(lpToken, [trader, positionRouter2], [-amount, amount]);
                     expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
@@ -1202,14 +1402,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 200n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1218,7 +1418,7 @@ describe("PositionRouter2", () => {
                 await expect(
                     positionRouter2
                         .connect(trader)
-                        .createBurnLPT(market, 100n, 0n, trader, "0x", {value: minExecutionFee}),
+                        .createBurnLPT(market, 100n, 0n, trader, "0x", {value: defaultExecutionFee, gasPrice}),
                 )
                     .to.be.revertedWithCustomError(positionRouter2, "ConflictRequests")
                     .withArgs(id);
@@ -1228,14 +1428,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 200n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1244,8 +1444,8 @@ describe("PositionRouter2", () => {
 
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: minExecutionFee + 1n});
-                idParam.executionFee = minExecutionFee + 1n;
+                    .createBurnLPT(market, 100n, 0n, trader, "0x", {value: defaultExecutionFee + 1n, gasPrice});
+                idParam.executionFee = defaultExecutionFee + 1n;
                 id = burnLPTId(idParam);
                 expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
             });
@@ -1254,27 +1454,25 @@ describe("PositionRouter2", () => {
             it("should revert if msg.value is less than minExecutionFee", async () => {
                 const {positionRouter2, market, trader} = await loadFixture(deployFixture);
 
-                let minExecutionFeeAfter = ethers.parseUnits("0.0002", marketDecimals);
-                await expect(positionRouter2.updateMinExecutionFee(4, minExecutionFeeAfter))
-                    .to.emit(positionRouter2, "MinExecutionFeeUpdated")
-                    .withArgs(4, minExecutionFeeAfter);
-
-                const value = minExecutionFee;
+                const value = defaultExecutionFee - 1n;
                 // insufficient execution fee
                 await expect(
-                    positionRouter2.connect(trader).createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0x", {value}),
+                    positionRouter2
+                        .connect(trader)
+                        .createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0x", {value, gasPrice}),
                 )
                     .to.be.revertedWithCustomError(positionRouter2, "InsufficientExecutionFee")
-                    .withArgs(value, minExecutionFeeAfter);
+                    .withArgs(value, defaultExecutionFee);
             });
             it("should revert if allowance is insufficient and permitData is empty", async () => {
                 const {positionRouter2, market, lpToken, trader, marketManager} = await loadFixture(deployFixture);
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await resetAllowance(lpToken, trader, await marketManager.getAddress());
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0x", {value: minExecutionFee}),
+                    positionRouter2.connect(trader).createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0x", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    }),
                 )
                     .to.be.revertedWithCustomError(lpToken, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, 100n);
@@ -1284,9 +1482,10 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await resetAllowance(lpToken, trader, await marketManager.getAddress());
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0xabcdef", {value: minExecutionFee}),
+                    positionRouter2.connect(trader).createBurnLPTReceivePUSD(market, 100n, 0n, trader, "0xabcdef", {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    }),
                 ).to.be.reverted;
             });
             it("should revert if allowance is insufficient and permitData is other's", async () => {
@@ -1296,9 +1495,10 @@ describe("PositionRouter2", () => {
                 await resetAllowance(lpToken, trader, await marketManager.getAddress());
                 const permitData = await genERC20PermitData(lpToken, other, await marketManager.getAddress(), 100n);
                 await expect(
-                    positionRouter2
-                        .connect(trader)
-                        .createBurnLPTReceivePUSD(market, 100n, 0n, trader, permitData, {value: minExecutionFee}),
+                    positionRouter2.connect(trader).createBurnLPTReceivePUSD(market, 100n, 0n, trader, permitData, {
+                        value: defaultExecutionFee,
+                        gasPrice,
+                    }),
                 )
                     .to.be.revertedWithCustomError(lpToken, "ERC20InsufficientAllowance")
                     .withArgs(marketManager.target, 0, 100n);
@@ -1317,24 +1517,37 @@ describe("PositionRouter2", () => {
                     );
                     const tx = positionRouter2
                         .connect(trader)
-                        .createBurnLPTReceivePUSD(market, amount, 0n, trader, permitData, {value: minExecutionFee});
+                        .createBurnLPTReceivePUSD(market, amount, 0n, trader, permitData, {
+                            value: defaultExecutionFee,
+                            gasPrice,
+                        });
                     let idParam = {
                         account: trader.address,
                         market: market.target,
                         amount: amount,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: true,
                         minPUSDReceived: 0,
                     };
                     let id = burnLPTId(idParam);
                     await expect(tx)
                         .to.emit(positionRouter2, "BurnLPTCreated")
-                        .withArgs(trader.address, market, amount, 0n, trader.address, minExecutionFee, true, 0n, id);
+                        .withArgs(
+                            trader.address,
+                            market,
+                            amount,
+                            0n,
+                            trader.address,
+                            defaultExecutionFee,
+                            true,
+                            0n,
+                            id,
+                        );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(lpToken, [trader, positionRouter2], [-amount, amount]);
                     expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
@@ -1347,24 +1560,37 @@ describe("PositionRouter2", () => {
                     await marketManager.mintLPToken(market.target, trader.address, amount);
                     const tx = positionRouter2
                         .connect(trader)
-                        .createBurnLPTReceivePUSD(market, amount, 0n, trader, "0x", {value: minExecutionFee});
+                        .createBurnLPTReceivePUSD(market, amount, 0n, trader, "0x", {
+                            value: defaultExecutionFee,
+                            gasPrice,
+                        });
                     let idParam = {
                         account: trader.address,
                         market: market.target,
                         amount: amount,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: true,
                         minPUSDReceived: 0,
                     };
                     let id = burnLPTId(idParam);
                     await expect(tx)
                         .to.emit(positionRouter2, "BurnLPTCreated")
-                        .withArgs(trader.address, market, amount, 0n, trader.address, minExecutionFee, true, 0n, id);
+                        .withArgs(
+                            trader.address,
+                            market,
+                            amount,
+                            0n,
+                            trader.address,
+                            defaultExecutionFee,
+                            true,
+                            0n,
+                            id,
+                        );
                     await expect(tx).to.changeEtherBalances(
                         [trader, positionRouter2],
-                        [-minExecutionFee, minExecutionFee],
+                        [-defaultExecutionFee, defaultExecutionFee],
                     );
                     await expect(tx).to.changeTokenBalances(lpToken, [trader, positionRouter2], [-amount, amount]);
                     expect(await positionRouter2.blockNumbers(id)).to.eq(await time.latestBlock());
@@ -1382,7 +1608,7 @@ describe("PositionRouter2", () => {
                         amount: 10n,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: true,
                         minPUSDReceived: 0,
                     },
@@ -1395,14 +1621,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1420,21 +1646,21 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
                 const tx = positionRouter2.connect(executor).cancelBurnLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor],
-                    [-minExecutionFee, minExecutionFee],
+                    [-defaultExecutionFee, defaultExecutionFee],
                 );
                 await expect(tx).to.changeTokenBalances(lpToken, [positionRouter2, trader], [-100n, 100n]);
                 let id = burnLPTId(idParam);
@@ -1455,7 +1681,7 @@ describe("PositionRouter2", () => {
                         amount: 100n,
                         acceptableMinLiquidity: 0n,
                         receiver: trader.address,
-                        executionFee: minExecutionFee,
+                        executionFee: defaultExecutionFee,
                         receivePUSD: false,
                         minPUSDReceived: 0,
                     },
@@ -1468,7 +1694,7 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 await positionRouter2.updateDelayValues(0n, 0n, 600n);
                 let idParam = {
                     account: trader.address,
@@ -1476,7 +1702,7 @@ describe("PositionRouter2", () => {
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1491,14 +1717,14 @@ describe("PositionRouter2", () => {
                 await positionRouter2.updateDelayValues(0n, 0n, 600n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1514,14 +1740,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1540,14 +1766,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPTReceivePUSD(market, 100n, 200n, trader, "0x", {value: minExecutionFee});
+                    .createBurnLPTReceivePUSD(market, 100n, 200n, trader, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: true,
                     minPUSDReceived: 200n,
                 };
@@ -1568,7 +1794,7 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 200n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 200n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
 
                 let idParam = {
                     account: trader.address,
@@ -1576,7 +1802,7 @@ describe("PositionRouter2", () => {
                     amount: 100n,
                     acceptableMinLiquidity: 200n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0n,
                 };
@@ -1596,14 +1822,14 @@ describe("PositionRouter2", () => {
                 await marketManager.mintLPToken(market.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0n,
                 };
@@ -1614,28 +1840,31 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).executeBurnLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor],
-                    [-minExecutionFee, minExecutionFee],
+                    [-defaultExecutionFee, defaultExecutionFee],
                 );
                 await expect(tx).to.changeTokenBalances(lpToken, [positionRouter2, marketManager], [-100n, 100n]);
                 let id = burnLPTId(idParam);
-                await expect(tx).to.emit(positionRouter2, "BurnLPTExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter2, "BurnLPTExecuted")
+                    .withArgs(id, executor.address, defaultExecutionFee);
                 let blockNumber = await positionRouter2.blockNumbers(id);
                 expect(blockNumber).eq(0);
             });
+
             it("should emit event and transfer execution fee when the market is weth", async () => {
                 const {positionRouter2, marketManager, weth, wethLpToken, trader, executor, other} =
                     await loadFixture(deployFixture);
                 await marketManager.mintLPToken(weth.target, trader.address, 100n);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(weth, 100n, 0n, other.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(weth, 100n, 0n, other.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: weth.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: other.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0n,
                 };
@@ -1647,11 +1876,94 @@ describe("PositionRouter2", () => {
                 const tx = positionRouter2.connect(executor).executeBurnLPT(idParam, executor.address);
                 await expect(tx).to.changeEtherBalances(
                     [positionRouter2, executor, other],
-                    [-minExecutionFee, minExecutionFee, 100n],
+                    [-defaultExecutionFee, defaultExecutionFee, 100n],
                 );
                 await expect(tx).to.changeTokenBalances(wethLpToken, [positionRouter2, marketManager], [-100n, 100n]);
                 let id = burnLPTId(idParam);
-                await expect(tx).to.emit(positionRouter2, "BurnLPTExecuted").withArgs(id, executor.address);
+                await expect(tx)
+                    .to.emit(positionRouter2, "BurnLPTExecuted")
+                    .withArgs(id, executor.address, defaultExecutionFee);
+                let blockNumber = await positionRouter2.blockNumbers(id);
+                expect(blockNumber).eq(0);
+            });
+
+            it("should refund execution fee if tx.gasprice is less than tx.gasprice when the request was submitted", async () => {
+                const {positionRouter2, marketManager, weth, wethLpToken, trader, executor, other} =
+                    await loadFixture(deployFixture);
+                await marketManager.mintLPToken(weth.target, trader.address, 100n);
+                await positionRouter2
+                    .connect(trader)
+                    .createBurnLPT(weth, 100n, 0n, other.address, "0x", {value: defaultExecutionFee, gasPrice});
+
+                let idParam = {
+                    account: trader.address,
+                    market: weth.target,
+                    amount: 100n,
+                    acceptableMinLiquidity: 0n,
+                    receiver: other.address,
+                    executionFee: defaultExecutionFee,
+                    receivePUSD: false,
+                    minPUSDReceived: 0n,
+                };
+
+                // set a delay value to prevent expire
+                await positionRouter2.updateDelayValues(0n, 0n, 600n);
+
+                await marketManager.setLiquidity(100n);
+                const tx = positionRouter2
+                    .connect(executor)
+                    .executeBurnLPT(idParam, executor.address, {gasPrice: gasPrice / 2n});
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, executor, other, trader],
+                    [-defaultExecutionFee, defaultExecutionFee / 2n, 100n, defaultExecutionFee / 2n],
+                );
+                await expect(tx).to.changeTokenBalances(wethLpToken, [positionRouter2, marketManager], [-100n, 100n]);
+                let id = burnLPTId(idParam);
+                await expect(tx)
+                    .to.emit(positionRouter2, "BurnLPTExecuted")
+                    .withArgs(id, executor.address, defaultExecutionFee / 2n);
+                let blockNumber = await positionRouter2.blockNumbers(id);
+                expect(blockNumber).eq(0);
+            });
+
+            it("should refund execution fee if tx.gasprice is less than tx.gasprice when the request was submitted according to the configured multiplier", async () => {
+                const {owner, positionRouter2, marketManager, weth, wethLpToken, trader, executor, other} =
+                    await loadFixture(deployFixture);
+                await marketManager.mintLPToken(weth.target, trader.address, 100n);
+                await positionRouter2.connect(owner).updateExecutionGasFeeMultiplier((BASIS_POINTS_DIVISOR * 3n) / 2n);
+                await positionRouter2
+                    .connect(trader)
+                    .createBurnLPT(weth, 100n, 0n, other.address, "0x", {value: defaultExecutionFee, gasPrice});
+
+                let idParam = {
+                    account: trader.address,
+                    market: weth.target,
+                    amount: 100n,
+                    acceptableMinLiquidity: 0n,
+                    receiver: other.address,
+                    executionFee: defaultExecutionFee,
+                    receivePUSD: false,
+                    minPUSDReceived: 0n,
+                };
+
+                // set a delay value to prevent expire
+                await positionRouter2.updateDelayValues(0n, 0n, 600n);
+
+                await marketManager.setLiquidity(100n);
+                const tx = positionRouter2
+                    .connect(executor)
+                    .executeBurnLPT(idParam, executor.address, {gasPrice: gasPrice / 2n});
+                let executionFee = ceilDiv(defaultExecutionFee * 3n, 4n);
+
+                await expect(tx).to.changeEtherBalances(
+                    [positionRouter2, executor, other, trader],
+                    [-defaultExecutionFee, executionFee, 100n, defaultExecutionFee - executionFee],
+                );
+                await expect(tx).to.changeTokenBalances(wethLpToken, [positionRouter2, marketManager], [-100n, 100n]);
+                let id = burnLPTId(idParam);
+                await expect(tx)
+                    .to.emit(positionRouter2, "BurnLPTExecuted")
+                    .withArgs(id, executor.address, executionFee);
                 let blockNumber = await positionRouter2.blockNumbers(id);
                 expect(blockNumber).eq(0);
             });
@@ -1668,7 +1980,7 @@ describe("PositionRouter2", () => {
                             amount: 100n,
                             acceptableMinLiquidity: 0n,
                             receiver: trader.address,
-                            executionFee: minExecutionFee,
+                            executionFee: defaultExecutionFee,
                             receivePUSD: false,
                             minPUSDReceived: 0,
                         },
@@ -1685,14 +1997,14 @@ describe("PositionRouter2", () => {
                 await positionRouter2.updateDelayValues(0, 0, 0);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
@@ -1714,14 +2026,14 @@ describe("PositionRouter2", () => {
                 await positionRouter2.updateDelayValues(20, 0, 100);
                 await positionRouter2
                     .connect(trader)
-                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: minExecutionFee});
+                    .createBurnLPT(market, 100n, 0n, trader.address, "0x", {value: defaultExecutionFee, gasPrice});
                 let idParam = {
                     account: trader.address,
                     market: market.target,
                     amount: 100n,
                     acceptableMinLiquidity: 0n,
                     receiver: trader.address,
-                    executionFee: minExecutionFee,
+                    executionFee: defaultExecutionFee,
                     receivePUSD: false,
                     minPUSDReceived: 0,
                 };
