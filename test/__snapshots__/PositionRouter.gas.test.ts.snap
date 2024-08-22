@@ -20,7 +20,7 @@ exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD with permitData 
 
 exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD without permitData again 1`] = `83819`;
 
-exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD with permitData 1`] = `135824`;
+exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD with permitData 1`] = `135855`;
 
 exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD without permitData 1`] = `100907`;
 
@@ -98,7 +98,7 @@ exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIn
 
 exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD without permitData again 1`] = `84041`;
 
-exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD with permitData 1`] = `136058`;
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD with permitData 1`] = `136089`;
 
 exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD without permitData 1`] = `101141`;
 

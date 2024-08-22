@@ -74,7 +74,7 @@ exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD createMintLPTPayPUSD with
 
 exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD createMintLPTPayPUSD without permitData again 1`] = `83739`;
 
-exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD first createMintLPTPayPUSD with permitData 1`] = `160828`;
+exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD first createMintLPTPayPUSD with permitData 1`] = `160859`;
 
 exports[`PositionRouter2 MintLPT #createMintLPTPayPUSD first createMintLPTPayPUSD without permitData 1`] = `100839`;
 
