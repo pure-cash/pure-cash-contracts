@@ -21,8 +21,8 @@ contract PUSDUpgradeable is ERC20Upgradeable, ERC20PermitUpgradeable, Governable
     }
 
     function initialize(address _initialGov) public initializer {
-        ERC20Upgradeable.__ERC20_init("PUSD", "PUSD");
-        ERC20PermitUpgradeable.__ERC20Permit_init("PUSD");
+        ERC20Upgradeable.__ERC20_init("Pure USD", "PUSD");
+        ERC20PermitUpgradeable.__ERC20Permit_init("Pure USD");
         GovernableUpgradeable.__Governable_init(_initialGov);
     }
 
