@@ -1,14 +1,13 @@
 import {ethers} from "hardhat";
 import {parsePercent} from "./util";
 import {AddressZero} from "@ethersproject/constants";
-import {ExecutionFeeType} from "../test/shared/Constants";
+import {EstimatedGasLimitType} from "../test/shared/Constants";
 
 const defaultCfg = {
     minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
     maxLeveragePerPosition: 10n,
     liquidationFeeRatePerPosition: parsePercent("2.5%"),
     maxSizeRatePerPosition: parsePercent("100%"),
-    maxOpenPositionRate: parsePercent("90%"),
     liquidationExecutionFee: ethers.parseUnits("0.00032", "ether"),
     liquidityCap: ethers.parseUnits("200000", "ether"),
     liquidityBufferModuleEnabled: true,
@@ -55,21 +54,21 @@ const defaultMaxCumulativeDeltaDiff = 100n * 1000n; // 10%
 
 const defaultExecutionGasLimit = {
     positionRouter: {
-        [ExecutionFeeType.IncreasePosition]: 158892,
-        [ExecutionFeeType.IncreasePositionPayPUSD]: 188892,
-        [ExecutionFeeType.DecreasePosition]: 181989,
-        [ExecutionFeeType.DecreasePositionReceivePUSD]: 195000,
-        [ExecutionFeeType.MintPUSD]: 261533,
-        [ExecutionFeeType.BurnPUSD]: 193043,
+        [EstimatedGasLimitType.IncreasePosition]: 195000,
+        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 260000,
+        [EstimatedGasLimitType.DecreasePosition]: 210000,
+        [EstimatedGasLimitType.DecreasePositionReceivePUSD]: 280000,
+        [EstimatedGasLimitType.MintPUSD]: 240000,
+        [EstimatedGasLimitType.BurnPUSD]: 240000,
     },
     positionRouter2: {
-        [ExecutionFeeType.MintLPT]: 240000,
-        [ExecutionFeeType.MintLPTPayPUSD]: 240000,
-        [ExecutionFeeType.BurnLPT]: 158892,
-        [ExecutionFeeType.BurnLPTReceivePUSD]: 198892,
+        [EstimatedGasLimitType.MintLPT]: 190000,
+        [EstimatedGasLimitType.MintLPTPayPUSD]: 250000,
+        [EstimatedGasLimitType.BurnLPT]: 190000,
+        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 280000,
     },
     balanceRateBalancer: {
-        [ExecutionFeeType.IncreaseBalanceRate]: 195000,
+        [EstimatedGasLimitType.IncreaseBalanceRate]: 400000,
     },
 };
 
