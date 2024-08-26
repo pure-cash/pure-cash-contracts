@@ -79,7 +79,7 @@ const config: HardhatUserConfig = {
             chainId: 1,
             accounts: accounts,
             ignition: {
-                maxFeePerGasLimit: ethers.parseUnits("2", "gwei"),
+                maxFeePerGasLimit: ethers.parseUnits("30", "gwei"),
                 // maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
             },
         },
@@ -103,7 +103,7 @@ const config: HardhatUserConfig = {
             create2: {
                 // To learn more about salts, see the CreateX documentation
                 // https://github.com/pcaversaccio/createx?tab=readme-ov-file#security-considerations
-                salt: "0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E000000000000000000082601",
+                salt: "0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E000000000000000000082602",
             },
         },
     },
