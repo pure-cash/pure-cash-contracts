@@ -68,7 +68,7 @@ export default buildModule("deploy", (m) => {
             timelockAdmin,
         ]);
         const Governable = m.contract("Governable", [owner]);
-        const PUSDUpgradeable = deployUpgradeable(m, "PUSDUpgradeable", [owner]);
+
 
         const FeeDistributorUpgradeable = deployUpgradeable(m, "FeeDistributorUpgradeable", [
             owner,
@@ -78,10 +78,10 @@ export default buildModule("deploy", (m) => {
 
         const StakingUpgradeable = deployUpgradeable(m, "StakingUpgradeable", [owner]);
 
-        const MarketManagerUpgradeable = deployUpgradeable(
+        const marketManagerUpgradeableTx = deployUpgradeableRaw(
             m,
             "MarketManagerUpgradeable",
-            [owner, FeeDistributorUpgradeable, PUSDUpgradeable, true],
+            [owner, FeeDistributorUpgradeable, true],
             {
                 ConfigurableUtil: libraries.ConfigurableUtil,
                 LiquidityUtil: libraries.LiquidityUtil,
@@ -91,6 +91,13 @@ export default buildModule("deploy", (m) => {
             },
         );
 
+        const MarketManagerUpgradeable = m.contractAt("MarketManagerUpgradeable", marketManagerUpgradeableTx)
+        const pusdAddress = m.readEventArgument(marketManagerUpgradeableTx, "PUSDDeployed", "pusd", {
+            id: "readPUSD",
+            emitter: MarketManagerUpgradeable
+        })
+        const PUSD = m.contractAt("PUSD", pusdAddress);
+
         const positionRouterExecutionTypes = Object.keys(network.estimatedGasLimits.positionRouter);
         const positionRouterExecutionGasLimits = positionRouterExecutionTypes.map((key) => {
             // @ts-ignore
@@ -98,7 +105,6 @@ export default buildModule("deploy", (m) => {
         });
         const PositionRouter = m.contract("PositionRouter", [
             Governable,
-            PUSDUpgradeable,
             MarketManagerUpgradeable,
             network.weth,
             positionRouterExecutionTypes,
@@ -112,7 +118,6 @@ export default buildModule("deploy", (m) => {
         });
         const PositionRouter2 = m.contract("PositionRouter2", [
             Governable,
-            PUSDUpgradeable,
             MarketManagerUpgradeable,
             network.weth,
             positionRouter2ExecutionTypes,
@@ -123,7 +128,6 @@ export default buildModule("deploy", (m) => {
 
         const DirectExecutablePlugin = m.contract("DirectExecutablePlugin", [
             Governable,
-            PUSDUpgradeable,
             MarketManagerUpgradeable,
             network.weth,
         ]);
@@ -136,7 +140,6 @@ export default buildModule("deploy", (m) => {
         const BalanceRateBalancer = m.contract("BalanceRateBalancer", [
             Governable,
             MarketManagerUpgradeable,
-            PUSDUpgradeable,
             DirectExecutablePlugin,
             balanceRateBalancerExecutionTypes,
             balanceRateBalancerExecutionGasLimits,
@@ -160,7 +163,6 @@ export default buildModule("deploy", (m) => {
         });
         return {
             ...libraries,
-            PUSDUpgradeable,
             FeeDistributorUpgradeable,
             StakingUpgradeable,
             MarketManagerUpgradeable,
@@ -173,6 +175,7 @@ export default buildModule("deploy", (m) => {
             Reader,
             Governable,
             PurecashTimelockController,
+            PUSD
         };
     });
 
@@ -180,7 +183,6 @@ export default buildModule("deploy", (m) => {
         // deploy libraries
         const contracts = m.useModule(ContractModule);
         const {
-            PUSDUpgradeable,
             MarketManagerUpgradeable,
             PositionRouter,
             PositionRouter2,
@@ -259,7 +261,6 @@ export default buildModule("deploy", (m) => {
             m.call(MixedExecutor, "setExecutor", [item, true], {id: "setExecutor_" + item});
         }
 
-        m.call(PUSDUpgradeable, "setMinter", [MarketManagerUpgradeable, true], {id: "PUSD_setMinter"});
         m.call(MarketManagerUpgradeable, "updateUpdater", [MixedExecutor], {id: "PriceFeed_updateUpdater"});
 
         return {
@@ -273,7 +274,6 @@ export default buildModule("deploy", (m) => {
         const {
             Governable,
             PurecashTimelockController,
-            PUSDUpgradeable,
             FeeDistributorUpgradeable,
             StakingUpgradeable,
             MarketManagerUpgradeable,
@@ -286,38 +286,32 @@ export default buildModule("deploy", (m) => {
             after: [change0],
         });
 
-        const change1 = m.call(PUSDUpgradeable, "changeGov", [PurecashTimelockController], {id: "PUSD_changeGov"});
-        const accept1 = m.call(PurecashTimelockController, "acceptGov", [PUSDUpgradeable], {
-            id: "PUSD_acceptGov",
+        const change1 = m.call(MarketManagerUpgradeable, "changeGov", [PurecashTimelockController], {
+            id: "MarketManager_changeGov",
+        });
+        const accept1 = m.call(PurecashTimelockController, "acceptGov", [MarketManagerUpgradeable], {
+            id: "MarketManager_acceptGov",
             after: [change1],
         });
 
-        const change2 = m.call(MarketManagerUpgradeable, "changeGov", [PurecashTimelockController], {
-            id: "MarketManager_changeGov",
+        const change2 = m.call(FeeDistributorUpgradeable, "changeGov", [PurecashTimelockController], {
+            id: "FeeDistributor_changeGov",
         });
-        const accept2 = m.call(PurecashTimelockController, "acceptGov", [MarketManagerUpgradeable], {
-            id: "MarketManager_acceptGov",
+        const accept2 = m.call(PurecashTimelockController, "acceptGov", [FeeDistributorUpgradeable], {
+            id: "FeeDistributor_acceptGov",
             after: [change2],
         });
 
-        const change3 = m.call(FeeDistributorUpgradeable, "changeGov", [PurecashTimelockController], {
-            id: "FeeDistributor_changeGov",
+        const change3 = m.call(StakingUpgradeable, "changeGov", [PurecashTimelockController], {
+            id: "Staking_changeGov",
         });
-        const accept3 = m.call(PurecashTimelockController, "acceptGov", [FeeDistributorUpgradeable], {
-            id: "FeeDistributor_acceptGov",
+        const accept3 = m.call(PurecashTimelockController, "acceptGov", [StakingUpgradeable], {
+            id: "Staking_acceptGov",
             after: [change3],
         });
 
-        const change4 = m.call(StakingUpgradeable, "changeGov", [PurecashTimelockController], {
-            id: "Staking_changeGov",
-        });
-        const accept4 = m.call(PurecashTimelockController, "acceptGov", [StakingUpgradeable], {
-            id: "Staking_acceptGov",
-            after: [change4],
-        });
-
         m.call(PurecashTimelockController, "renounceRole", [keccak256(toUtf8Bytes("EXECUTOR_ROLE")), owner], {
-            after: [accept0, accept1, accept2, accept3, accept4],
+            after: [accept0, accept1, accept2, accept3],
         });
         return contracts;
     });
@@ -330,13 +324,21 @@ function deployUpgradeable(
     contractName: string,
     params: ArgumentType[],
     libraries?: Record<string, ContractFuture<string>>,
+) {
+    return m.contractAt(contractName, deployUpgradeableRaw(m, contractName, params, libraries));
+}
+
+function deployUpgradeableRaw(
+    m: IgnitionModuleBuilder,
+    contractName: string,
+    params: ArgumentType[],
+    libraries?: Record<string, ContractFuture<string>>,
 ): NamedArtifactContractDeploymentFuture<"ERC1967Proxy"> {
     const impl = m.contract(contractName, [], {
         id: contractName + "Impl",
         libraries: libraries,
     });
-    const proxy = m.contract("ERC1967Proxy", [impl, m.encodeFunctionCall(impl, "initialize", params)], {
+    return m.contract("ERC1967Proxy", [impl, m.encodeFunctionCall(impl, "initialize", params)], {
         id: contractName + "Proxy",
     });
-    return m.contractAt(contractName, proxy);
 }
