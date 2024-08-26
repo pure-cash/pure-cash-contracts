@@ -17,14 +17,12 @@ contract BalanceRateBalancer is IBalanceRateBalancer, PositionRouterCommon {
     constructor(
         Governable _govImpl,
         IMarketManager _marketManager,
-        IPUSD _usd,
         IDirectExecutablePlugin _plugin,
         EstimatedGasLimitType[] memory _estimatedGasLimitTypes,
         uint256[] memory _estimatedGasLimits
     )
         PositionRouterCommon(
             _govImpl,
-            _usd,
             _marketManager,
             IWETHMinimum(address(0)),
             _estimatedGasLimitTypes,

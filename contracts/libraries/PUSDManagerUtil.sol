@@ -6,9 +6,10 @@ import "./PositionUtil.sol";
 import "./LiquidityUtil.sol";
 import "./UnsafeMath.sol";
 import "./SpreadUtil.sol";
-import "../core/interfaces/IPUSD.sol";
+import "../core/PUSD.sol";
 import "../core/interfaces/IMarketManager.sol";
 import {LONG, SHORT} from "../types/Side.sol";
+import "@openzeppelin/contracts/utils/Create2.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 library PUSDManagerUtil {
@@ -16,13 +17,15 @@ library PUSDManagerUtil {
     using SafeERC20 for IERC20;
     using UnsafeMath for *;
 
+    bytes32 internal constant PUSD_SALT = keccak256("Pure USD");
+    bytes32 internal constant PUSD_INIT_CODE_HASH = 0x833a3129a7c49096ba2bc346ab64e2bbec674f4181bf8e6dedfa83aea7fb0fec;
+
     struct MintParam {
         IERC20 market;
         bool exactIn;
         uint96 amount;
         IPUSDManagerCallback callback;
         uint64 indexPrice;
-        IPUSD usd;
         address receiver;
     }
 
@@ -32,7 +35,6 @@ library PUSDManagerUtil {
         uint96 amount;
         IPUSDManagerCallback callback;
         uint64 indexPrice;
-        IPUSD usd;
         address receiver;
     }
 
@@ -49,6 +51,18 @@ library PUSDManagerUtil {
         uint64 indexPrice;
         uint24 tradingFeeRate;
         uint96 outputAmount;
+    }
+
+    function deployPUSD() public returns (PUSD pusd) {
+        pusd = new PUSD{salt: PUSD_SALT}();
+    }
+
+    function computePUSDAddress() internal view returns (address) {
+        return computePUSDAddress(address(this));
+    }
+
+    function computePUSDAddress(address _deployer) internal pure returns (address) {
+        return Create2.computeAddress(PUSD_SALT, PUSD_INIT_CODE_HASH, _deployer);
     }
 
     function mint(
@@ -131,7 +145,7 @@ library PUSDManagerUtil {
         if (!_param.exactIn) payAmount = sizeDelta + tradingFee + spread;
 
         // mint PUSD
-        _param.usd.mint(_param.receiver, receiveAmount);
+        IPUSD(computePUSDAddress()).mint(_param.receiver, receiveAmount);
         // execute callback
         uint256 balanceBefore = _param.market.balanceOf(address(this));
         _param.callback.PUSDManagerCallback(_param.market, payAmount, receiveAmount, _data);
@@ -267,11 +281,12 @@ library PUSDManagerUtil {
         _param.market.safeTransfer(_param.receiver, receiveAmount);
 
         // Then execute the callback
-        uint256 balanceBefore = _param.usd.balanceOf(address(this));
-        _param.callback.PUSDManagerCallback(_param.usd, payAmount, receiveAmount, _data);
-        uint96 actualPayAmount = (_param.usd.balanceOf(address(this)) - balanceBefore).toUint96();
+        IPUSD usd = IPUSD(computePUSDAddress());
+        uint256 balanceBefore = usd.balanceOf(address(this));
+        _param.callback.PUSDManagerCallback(usd, payAmount, receiveAmount, _data);
+        uint96 actualPayAmount = (usd.balanceOf(address(this)) - balanceBefore).toUint96();
         if (actualPayAmount != payAmount) revert IMarketErrors.UnexpectedPayAmount(payAmount, actualPayAmount);
-        _param.usd.burn(payAmount);
+        usd.burn(payAmount);
 
         // never underflow because of the validation above
         unchecked {
@@ -366,7 +381,6 @@ library PUSDManagerUtil {
 
     function repayLiquidityBufferDebt(
         IMarketManager.State storage _state,
-        IPUSD _usd,
         IERC20 _market,
         address _account,
         address _receiver
@@ -374,7 +388,8 @@ library PUSDManagerUtil {
         IMarketManager.LiquidityBufferModule storage module = _state.liquidityBufferModule;
         IMarketManager.LiquidityBufferModule memory moduleCache = module;
 
-        uint128 amount = _usd.balanceOf(address(this)).toUint128();
+        IPUSD usd = IPUSD(computePUSDAddress());
+        uint128 amount = usd.balanceOf(address(this)).toUint128();
 
         // if paid too much, only repay the debt.
         if (amount > moduleCache.pusdDebt) amount = moduleCache.pusdDebt;
@@ -383,7 +398,7 @@ library PUSDManagerUtil {
         // prettier-ignore
         unchecked { module.pusdDebt = moduleCache.pusdDebt - amount; }
 
-        _usd.burn(amount);
+        usd.burn(amount);
 
         unchecked {
             receiveAmount = uint128((uint256(moduleCache.tokenPayback) * amount) / moduleCache.pusdDebt);
@@ -395,13 +410,9 @@ library PUSDManagerUtil {
         emit IMarketManager.LiquidityBufferModuleDebtRepaid(_market, _account, amount, receiveAmount);
     }
 
-    function updatePSMCollateralCap(
-        IPSM.CollateralState storage _state,
-        IERC20 _collateral,
-        uint120 _cap,
-        IPUSD _usd
-    ) public {
-        require(address(_usd) != address(0) && address(_usd) != address(_collateral), IPSM.InvalidCollateral());
+    function updatePSMCollateralCap(IPSM.CollateralState storage _state, IERC20 _collateral, uint120 _cap) public {
+        address usd = computePUSDAddress();
+        require(usd != address(0) && usd != address(_collateral), IPSM.InvalidCollateral());
 
         if (_state.decimals == 0) {
             uint8 decimals = IERC20Metadata(address(_collateral)).decimals();
@@ -415,8 +426,7 @@ library PUSDManagerUtil {
     function psmMint(
         IPSM.CollateralState storage _state,
         IERC20 _collateral,
-        address _receiver,
-        IPUSD _usd
+        address _receiver
     ) public returns (uint64 receiveAmount) {
         uint128 balanceAfter = _collateral.balanceOf(address(this)).toUint128();
         if (balanceAfter > _state.cap) balanceAfter = _state.cap;
@@ -430,7 +440,7 @@ library PUSDManagerUtil {
             _state.decimals,
             Math.Rounding.Down
         );
-        _usd.mint(_receiver, receiveAmount);
+        IPUSD(computePUSDAddress()).mint(_receiver, receiveAmount);
 
         emit IPSM.PSMMinted(_collateral, _receiver, payAmount, receiveAmount);
     }
@@ -438,11 +448,11 @@ library PUSDManagerUtil {
     function psmBurn(
         IPSM.CollateralState storage _state,
         IERC20 _collateral,
-        address _receiver,
-        IPUSD _usd
+        address _receiver
     ) public returns (uint96 receiveAmount) {
-        uint64 payAmount = _usd.balanceOf(address(this)).toUint64();
-        _usd.burn(payAmount);
+        IPUSD usd = IPUSD(computePUSDAddress());
+        uint64 payAmount = usd.balanceOf(address(this)).toUint64();
+        usd.burn(payAmount);
 
         receiveAmount = PositionUtil.calcMarketTokenValue(payAmount, Constants.PRICE_1, _state.decimals);
 

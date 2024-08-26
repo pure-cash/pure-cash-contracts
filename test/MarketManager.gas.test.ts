@@ -1,5 +1,5 @@
 import {ethers, upgrades} from "hardhat";
-import {ERC20, FeeDistributorUpgradeable, MarketManagerUpgradeable, PUSDUpgradeable} from "../typechain-types";
+import {ERC20, FeeDistributorUpgradeable, MarketManagerUpgradeable} from "../typechain-types";
 import {parsePercent} from "../scripts/util";
 import {loadFixture, time} from "@nomicfoundation/hardhat-network-helpers";
 import {BigNumberish} from "ethers";
@@ -47,9 +47,6 @@ describe("MarketManager", () => {
 
     async function deployFixture() {
         const [owner, executor, , alice, bob, carrie] = await ethers.getSigners();
-        const pusd = (await upgrades.deployProxy(await ethers.getContractFactory("PUSDUpgradeable"), [owner.address], {
-            kind: "uups",
-        })) as unknown as PUSDUpgradeable;
 
         const feeDistributor = (await upgrades.deployProxy(
             await ethers.getContractFactory("FeeDistributorUpgradeable"),
@@ -82,7 +79,7 @@ describe("MarketManager", () => {
                     PositionUtil: await positionUtil.getAddress(),
                 },
             }),
-            [owner.address, await feeDistributor.getAddress(), await pusd.getAddress(), true],
+            [owner.address, await feeDistributor.getAddress(), true],
             {kind: "uups"},
         )) as unknown as MarketManagerUpgradeable;
 
@@ -98,7 +95,6 @@ describe("MarketManager", () => {
         const PositionRouter = await ethers.getContractFactory("PositionRouter");
         const positionRouter = await PositionRouter.deploy(
             await gov.getAddress(),
-            await pusd.getAddress(),
             await marketManager.getAddress(),
             await weth.getAddress(),
             await positionRouterEstimatedGasLimitTypes(),
@@ -108,7 +104,6 @@ describe("MarketManager", () => {
         const PositionRouter2 = await ethers.getContractFactory("PositionRouter2");
         const positionRouter2 = await PositionRouter2.deploy(
             await gov.getAddress(),
-            await pusd.getAddress(),
             await marketManager.getAddress(),
             await weth.getAddress(),
             await positionRouter2EstimatedGasLimitTypes(),
@@ -136,8 +131,6 @@ describe("MarketManager", () => {
         await positionRouter2.updatePositionExecutor(await mixedExecutor.getAddress(), true);
         await liquidator.updateExecutor(await mixedExecutor.getAddress(), true);
 
-        await pusd.setMinter(await marketManager.getAddress(), true);
-
         await mixedExecutor.setExecutor(executor.address, true);
 
         await expect(marketManager.enableMarket(await weth.getAddress(), "LPT WETH", CFG)).to.be.emit(
@@ -158,6 +151,8 @@ describe("MarketManager", () => {
         const MockChainLinkPriceFeed = await ethers.getContractFactory("MockChainLinkPriceFeed");
         const mockChainLinkPriceFeed = await MockChainLinkPriceFeed.deploy();
         await mockChainLinkPriceFeed.setDecimals(8);
+
+        const pusd = await ethers.getContractAt("PUSD", await marketManager.pusd());
         return {
             owner,
             executor,

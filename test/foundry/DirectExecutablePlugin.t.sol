@@ -15,13 +15,8 @@ contract DirectExecutablePluginTest is Test {
 
     address gov = address(1);
 
-    address pusdImpl = address(new PUSDUpgradeable());
-    IPUSD usd =
-        IPUSD(
-            address(
-                new ERC1967Proxy(pusdImpl, abi.encodeWithSelector(PUSDUpgradeable.initialize.selector, address(this)))
-            )
-        );
+    address pusdImpl = address(new PUSD());
+    PUSD usd;
 
     IWETHMinimum weth = IWETHMinimum(address(new WETH9()));
     IERC20 dai = new ERC20Test("DAI", "DAI", 6, 0);
@@ -32,10 +27,10 @@ contract DirectExecutablePluginTest is Test {
 
     constructor() {
         Governable govImpl = new Governable(gov);
-        marketManager = new MockMarketManager(PUSDUpgradeable(address(usd)), weth);
-        plugin = new DirectExecutablePlugin(govImpl, usd, IMarketManager(address(marketManager)), weth);
+        marketManager = new MockMarketManager(weth);
+        usd = marketManager.usd();
+        plugin = new DirectExecutablePlugin(govImpl, IMarketManager(address(marketManager)), weth);
         (alice, alicePk) = makeAddrAndKey("alice");
-        usd.setMinter(address(marketManager), true);
     }
 
     function setUp() public {

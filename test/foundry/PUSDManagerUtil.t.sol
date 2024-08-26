@@ -4,7 +4,7 @@ pragma solidity =0.8.26;
 import "./BaseTest.t.sol";
 import "../../contracts/core/interfaces/IMarketManager.sol";
 import "../../contracts/plugins/interfaces/IPositionRouter.sol";
-import "../../contracts/core/PUSDUpgradeable.sol";
+import "../../contracts/core/PUSD.sol";
 import "../../contracts/libraries/LiquidityUtil.sol";
 import "../../contracts/libraries/PUSDManagerUtil.sol";
 import "../../contracts/test/ERC20Test.sol";
@@ -24,23 +24,11 @@ contract PUSDManagerUtilTest is BaseTest {
     IERC20 market = new ERC20Test("Market Token", "MT", 18, 1000000e18);
     ILPToken lpToken = LiquidityUtil.deployLPToken(market, "tLPT");
     IPUSDManagerCallback pusdManagerCallback = IPUSDManagerCallback(address(new MockPUSDManagerCallback()));
-    PUSDUpgradeable pusdImpl = new PUSDUpgradeable();
-    PUSDUpgradeable pusdProxy =
-        PUSDUpgradeable(
-            address(
-                new ERC1967Proxy(
-                    address(pusdImpl),
-                    abi.encodeWithSelector(PUSDUpgradeable.initialize.selector, address(this))
-                )
-            )
-        );
-    IPUSD pusd = IPUSD(address(pusdProxy));
+    PUSD pusd = PUSDManagerUtil.deployPUSD();
     uint64 price = uint64(31681133113133);
 
     function setUp() public {
         delete state;
-
-        pusd.setMinter(address(this), true);
 
         state.packedState.lpLiquidity = 500 * 1e18;
 
@@ -65,7 +53,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: 0,
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
 
@@ -87,7 +74,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: uint96((uint256(price) * 50 * 1e18) / (10 ** 22)),
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 110e18, account: msg.sender}));
@@ -105,7 +91,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: uint96((uint256(price) * 100 * 1e18) / (10 ** 22)) + 10,
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 110e18, account: msg.sender}));
@@ -125,7 +110,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: uint96((uint256(price) * 50 * 1e18) / (10 ** 22)),
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 51e18, account: msg.sender}));
@@ -150,7 +134,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: uint96((uint256(price) * 10 * 1e18) / (10 ** 22)),
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 11e18, account: msg.sender}));
@@ -172,7 +155,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: uint96((uint256(newPrice) * 10 * 1e18) / (10 ** 22)),
             callback: pusdManagerCallback,
             indexPrice: newPrice,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 12e18, account: msg.sender}));
@@ -245,7 +227,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: 0,
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 11e18, account: msg.sender}));
@@ -263,7 +244,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: 10e18,
             callback: pusdManagerCallback,
             indexPrice: price,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 11e18, account: msg.sender}));
@@ -285,7 +265,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: 10 * 1e18,
             callback: pusdManagerCallback,
             indexPrice: newPrice,
-            usd: pusd,
             receiver: receiver
         });
         bytes memory data = abi.encode(IPositionRouterCommon.CallbackData({margin: 12e18, account: msg.sender}));
@@ -363,7 +342,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 50 * 1e18,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: address(this)
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 52 * 1e18, account: msg.sender}))
@@ -385,7 +363,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 0,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3000 * 1e6, account: msg.sender}))
@@ -408,7 +385,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: uint96(totalSupply) + 1,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3000 * 1e6, account: msg.sender}))
@@ -430,7 +406,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 3000 * 1e6,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3100 * 1e6, account: msg.sender}))
@@ -460,7 +435,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 3000 * 1e6,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3100 * 1e6, account: msg.sender}))
@@ -482,7 +456,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 3000 * 1e6,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3100 * 1e6, account: msg.sender}))
@@ -509,7 +482,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: 3000 * 1e6,
             callback: pusdManagerCallback,
             indexPrice: newPrice,
-            usd: pusd,
             receiver: receiver
         });
 
@@ -597,7 +569,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: uint96(state.globalPUSDPosition.size + 1),
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: expectAmount, account: msg.sender}))
@@ -618,7 +589,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: 0,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 0, account: msg.sender}))
@@ -649,7 +619,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: expectAmount,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3100 * 1e6, account: msg.sender}))
@@ -673,7 +642,6 @@ contract PUSDManagerUtilTest is BaseTest {
                 amount: expectAmount,
                 callback: pusdManagerCallback,
                 indexPrice: price,
-                usd: pusd,
                 receiver: receiver
             }),
             abi.encode(IPositionRouterCommon.CallbackData({margin: 3100 * 1e6, account: msg.sender}))
@@ -700,7 +668,6 @@ contract PUSDManagerUtilTest is BaseTest {
             amount: expectAmount,
             callback: pusdManagerCallback,
             indexPrice: newPrice,
-            usd: pusd,
             receiver: receiver
         });
 
@@ -822,7 +789,7 @@ contract PUSDManagerUtilTest is BaseTest {
     function test_repayLiquidityBufferDebt_revertIf_noDebtToPay() public {
         _setLiquidityBufferModule(0, 0);
         vm.expectRevert(stdError.divisionError);
-        PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
     }
 
     function test_repayLiquidityBufferDebt_revertIf_payExceedsU128() public {
@@ -831,7 +798,7 @@ contract PUSDManagerUtilTest is BaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 128, type(uint136).max)
         );
-        PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
     }
 
     function test_repayLiquidityBufferDebt_pass() public {
@@ -840,7 +807,7 @@ contract PUSDManagerUtilTest is BaseTest {
         vm.assertTrue(pusd.totalSupply() == 100e6);
         vm.expectEmit();
         emit IMarketManager.LiquidityBufferModuleDebtRepaid(market, account, 100e6, 0.05e18);
-        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
         assertTrue(state.liquidityBufferModule.pusdDebt == 0);
         assertTrue(state.liquidityBufferModule.tokenPayback == 0);
         assertTrue(state.tokenBalance == 0);
@@ -852,7 +819,7 @@ contract PUSDManagerUtilTest is BaseTest {
     function test_repayLiquidityBufferDebt_passIf_payExceedsDebt() public {
         _setLiquidityBufferModule(100e6, 0.05e18);
         deal(address(pusd), address(this), 200e6);
-        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
         vm.assertTrue(receiveAmount == 0.05e18);
         assertTrue(state.liquidityBufferModule.pusdDebt == 0);
         assertTrue(state.liquidityBufferModule.tokenPayback == 0);
@@ -865,7 +832,7 @@ contract PUSDManagerUtilTest is BaseTest {
     function test_repayLiquidityBufferDebt_passThat_receiveAmountIsRoundingDown() public {
         _setLiquidityBufferModule(100e6, 3);
         deal(address(pusd), address(this), 50e6);
-        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        uint128 receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
         vm.assertTrue(receiveAmount == 1);
         assertTrue(state.liquidityBufferModule.pusdDebt == 50e6);
         assertTrue(state.liquidityBufferModule.tokenPayback == 2);
@@ -873,7 +840,7 @@ contract PUSDManagerUtilTest is BaseTest {
         assertTrue(market.balanceOf(account) == 1);
 
         deal(address(pusd), address(this), 50e6);
-        receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, pusd, market, account, account);
+        receiveAmount = PUSDManagerUtil.repayLiquidityBufferDebt(state, market, account, account);
         vm.assertTrue(receiveAmount == 2);
         assertTrue(state.liquidityBufferModule.pusdDebt == 0);
         assertTrue(state.liquidityBufferModule.tokenPayback == 0);

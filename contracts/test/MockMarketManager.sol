@@ -4,8 +4,8 @@ pragma solidity =0.8.26;
 import "../types/Side.sol";
 import "../IWETHMinimum.sol";
 import "../core/interfaces/IPSM.sol";
-import "../core/PUSDUpgradeable.sol";
 import "../libraries/LiquidityUtil.sol";
+import "../libraries/PUSDManagerUtil.sol";
 import {LPToken} from "../core/LPToken.sol";
 import "../core/interfaces/IMarketLiquidity.sol";
 import "../core/interfaces/IPUSDManagerCallback.sol";
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract MockMarketManager {
     LPToken public lpToken;
-    PUSDUpgradeable public usd;
+    PUSD public usd;
     IWETHMinimum public weth;
 
     uint64 public minPrice;
@@ -30,8 +30,8 @@ contract MockMarketManager {
     IPSM.CollateralState psmCollateralState;
     IMarketManager.LiquidityBufferModule public liquidityBufferModule;
 
-    constructor(PUSDUpgradeable _usd, IWETHMinimum _weth) payable {
-        usd = _usd;
+    constructor(IWETHMinimum _weth) payable {
+        usd = PUSDManagerUtil.deployPUSD();
         weth = _weth;
     }
 
@@ -203,5 +203,9 @@ contract MockMarketManager {
         IERC20 /* _market */
     ) external view returns (IMarketManager.LiquidityBufferModule memory) {
         return liquidityBufferModule;
+    }
+
+    function mintPUSDArbitrary(address to, uint256 amount) external {
+        usd.mint(to, amount);
     }
 }

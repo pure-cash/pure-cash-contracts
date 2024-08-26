@@ -21,26 +21,19 @@ contract BalanceRateBalancerTest is Test {
     address gov = address(this);
     address executor = address(0x1);
 
-    address pusdImpl = address(new PUSDUpgradeable());
-    IPUSD usd =
-        IPUSD(
-            address(
-                new ERC1967Proxy(pusdImpl, abi.encodeWithSelector(PUSDUpgradeable.initialize.selector, address(this)))
-            )
-        );
+    address pusdImpl = address(new PUSD());
+    PUSD usd;
     IERC20 weth = IERC20(address(new WETH9()));
     IERC20 dai = new ERC20Test("DAI", "DAI", 6, 0);
 
     function setUp() public {
         Governable govImpl = new Governable(gov);
-        marketManager = IMarketManager(
-            address(new MockMarketManager(PUSDUpgradeable(address(usd)), IWETHMinimum(address(weth))))
-        );
-        usd.setMinter(address(marketManager), true);
+        MockMarketManager mockMarketManager = new MockMarketManager(IWETHMinimum(address(weth)));
+        usd = mockMarketManager.usd();
+        marketManager = IMarketManager(address(mockMarketManager));
 
         plugin = new DirectExecutablePlugin(
             govImpl,
-            usd,
             IMarketManager(address(marketManager)),
             IWETHMinimum(address(weth))
         );
@@ -50,21 +43,14 @@ contract BalanceRateBalancerTest is Test {
         uint256[] memory estimatedGasLimits = new uint256[](1);
         estimatedGasLimits[0] = 0;
 
-        balancer = new BalanceRateBalancer(
-            govImpl,
-            marketManager,
-            usd,
-            plugin,
-            estimatedGasLimitTypes,
-            estimatedGasLimits
-        );
+        balancer = new BalanceRateBalancer(govImpl, marketManager, plugin, estimatedGasLimitTypes, estimatedGasLimits);
         balancer.updatePositionExecutor(executor, true);
     }
 
     function test_createIncreaseBalanceRate_revertIf_notGov() public {
         vm.prank(address(0x2));
 
-        vm.expectRevert(abi.encodeWithSelector(GovernableUpgradeable.Forbidden.selector));
+        vm.expectRevert(abi.encodeWithSelector(Governable.Forbidden.selector));
         balancer.createIncreaseBalanceRate(IERC20(address(weth)), dai, 1000e6, new address[](0), new bytes[](0));
     }
 
@@ -170,7 +156,6 @@ contract BalanceRateBalancerTest is Test {
 
         bytes[] memory calldatas = new bytes[](3);
         address[4] memory route = [address(weth), address(1), address(dai), address(1)];
-        uint256[] memory swapParam = new uint256[](0);
         uint256[][] memory swapParams = new uint256[][](0);
         address[5] memory pools = [address(1), address(1), address(1), address(1), address(1)];
 

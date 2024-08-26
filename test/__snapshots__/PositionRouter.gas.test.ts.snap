@@ -12,33 +12,33 @@ exports[`PositionRouter #updatePositionExecutor update position executor from tr
 
 exports[`PositionRouter #updatePositionExecutor update position executor from true to true 1`] = `33711`;
 
-exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel burn PUSD 1`] = `54888`;
+exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel burn PUSD 1`] = `50056`;
 
-exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel when request not exists 1`] = `27491`;
+exports[`PositionRouter BurnPUSD #cancelBurnPUSD cancel when request not exists 1`] = `27488`;
 
-exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD with permitData again 1`] = `80673`;
+exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD with permitData again 1`] = `75888`;
 
-exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD without permitData again 1`] = `83819`;
+exports[`PositionRouter BurnPUSD #createBurnPUSD createBurnPUSD without permitData again 1`] = `79007`;
 
-exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD with permitData 1`] = `135855`;
+exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD with permitData 1`] = `125104`;
 
-exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD without permitData 1`] = `100907`;
+exports[`PositionRouter BurnPUSD #createBurnPUSD first createBurnPUSD without permitData 1`] = `96095`;
 
-exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and market is not weth 1`] = `98286`;
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and market is not weth 1`] = `92850`;
 
-exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and the market is weth 1`] = `149293`;
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and the market is weth 1`] = `144944`;
 
-exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and the market is weth and refund execution fee 1`] = `155010`;
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is false and the market is weth and refund execution fee 1`] = `150661`;
 
-exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is not weth 1`] = `98294`;
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is not weth 1`] = `92858`;
 
-exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is weth 1`] = `149300`;
+exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when exactIn is true and the market is weth 1`] = `144951`;
 
 exports[`PositionRouter BurnPUSD #executeBurnPUSD execute when request not exists 1`] = `27429`;
 
-exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD cancel request if execution reverted 1`] = `67281`;
+exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD cancel request if execution reverted 1`] = `62449`;
 
-exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD execute request if execution passed 1`] = `80341`;
+exports[`PositionRouter BurnPUSD #executeOrCancelBurnPUSD execute request if execution passed 1`] = `74905`;
 
 exports[`PositionRouter DecreasePosition #cancelDecreasePosition cancel when executor cancel 1`] = `38170`;
 
@@ -56,31 +56,31 @@ exports[`PositionRouter DecreasePosition #createDecreasePositionReceivePUSD firs
 
 exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when request is not exists 1`] = `27628`;
 
-exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when the market is weth 1`] = `110368`;
+exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when the market is weth 1`] = `110386`;
 
-exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when the market is weth and refund execution fee 1`] = `116076`;
+exports[`PositionRouter DecreasePosition #executeDecreasePosition execute when the market is weth and refund execution fee 1`] = `116094`;
 
-exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when receivePUSD is true 1`] = `84015`;
+exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when receivePUSD is true 1`] = `84032`;
 
-exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when the market is not weth 1`] = `56309`;
+exports[`PositionRouter DecreasePosition #executeDecreasePosition should emit event and distribute funds when the market is not weth 1`] = `56331`;
 
 exports[`PositionRouter DecreasePosition #executeOrCancelDecreasePosition cancel request if execution reverted 1`] = `50734`;
 
-exports[`PositionRouter DecreasePosition #executeOrCancelDecreasePosition execute request if execution passed 1`] = `58220`;
+exports[`PositionRouter DecreasePosition #executeOrCancelDecreasePosition execute request if execution passed 1`] = `58242`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is not weth 1`] = `51691`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is not weth 1`] = `51685`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is weth 1`] = `59826`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and market is weth 1`] = `59820`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and payPUSD is true 1`] = `54176`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when executor cancel and payPUSD is true 1`] = `49347`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request not exists 1`] = `26707`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request not exists 1`] = `26704`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is not weth 1`] = `26707`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is not weth 1`] = `26704`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is weth 1`] = `57383`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and market is weth 1`] = `57377`;
 
-exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and payPUSD is true 1`] = `54233`;
+exports[`PositionRouter IncreasePosition #cancelIncreasePosition cancel when request owner calls and payPUSD is true 1`] = `49404`;
 
 exports[`PositionRouter IncreasePosition #createIncreasePosition createIncreasePosition with permitData again 1`] = `75312`;
 
@@ -94,13 +94,13 @@ exports[`PositionRouter IncreasePosition #createIncreasePositionETH createIncrea
 
 exports[`PositionRouter IncreasePosition #createIncreasePositionETH first createIncreasePositionETH 1`] = `86376`;
 
-exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD with permitData again 1`] = `80895`;
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD with permitData again 1`] = `76088`;
 
-exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD without permitData again 1`] = `84041`;
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD createIncreasePositionPayPUSD without permitData again 1`] = `79207`;
 
-exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD with permitData 1`] = `136089`;
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD with permitData 1`] = `125316`;
 
-exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD without permitData 1`] = `101141`;
+exports[`PositionRouter IncreasePosition #createIncreasePositionPayPUSD first createIncreasePositionPayPUSD without permitData 1`] = `96307`;
 
 exports[`PositionRouter IncreasePosition #executeIncreasePosition execute when request is exists 1`] = `66163`;
 
@@ -108,7 +108,7 @@ exports[`PositionRouter IncreasePosition #executeIncreasePosition execute when r
 
 exports[`PositionRouter IncreasePosition #executeIncreasePosition execute when request is not exists 1`] = `27047`;
 
-exports[`PositionRouter IncreasePosition #executeOrCancelIncreasePosition cancel request if execution reverted 1`] = `63466`;
+exports[`PositionRouter IncreasePosition #executeOrCancelIncreasePosition cancel request if execution reverted 1`] = `63460`;
 
 exports[`PositionRouter IncreasePosition #executeOrCancelIncreasePosition execute request if execution passed 1`] = `67700`;
 

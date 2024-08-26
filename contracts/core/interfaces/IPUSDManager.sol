@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
+import "./IPUSD.sol";
 import "./IPUSDManagerCallback.sol";
 
 /// @notice Interface for managing the minting and burning of PUSD.
@@ -13,6 +14,9 @@ interface IPUSDManager {
         /// @notice The entry price of the position
         uint64 entryPrice;
     }
+
+    /// @notice Emitted when PUSD is deployed
+    event PUSDDeployed(IPUSD indexed pusd);
 
     /// @notice Emitted when the PUSD position is increased
     /// @param market The target market contract address, such as the contract address of WETH

@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./ConfigurableUpgradeable.sol";
 import "./FeeDistributorUpgradeable.sol";
-import "./interfaces/IPUSD.sol";
 import "../libraries/MarketUtil.sol";
+import "../libraries/PUSDManagerUtil.sol";
 import "../plugins/PluginManagerUpgradeable.sol";
 
 abstract contract MarketManagerStatesUpgradeable is IMarketManager, ConfigurableUpgradeable, PluginManagerUpgradeable {
@@ -14,7 +14,6 @@ abstract contract MarketManagerStatesUpgradeable is IMarketManager, Configurable
     struct MarketManagerStatesStorage {
         mapping(IERC20 market => State) marketStates;
         FeeDistributorUpgradeable feeDistributor;
-        IPUSD usd;
     }
 
     // keccak256(abi.encode(uint256(keccak256("Purecash.storage.MarketManagerStatesUpgradeable")) - 1))
@@ -24,19 +23,15 @@ abstract contract MarketManagerStatesUpgradeable is IMarketManager, Configurable
 
     function __MarketManagerStates_init(
         address _initialGov,
-        FeeDistributorUpgradeable _feeDistributor,
-        IPUSD _usd
+        FeeDistributorUpgradeable _feeDistributor
     ) internal onlyInitializing {
         __Configurable_init(_initialGov);
-        __MarketManagerStates_init_unchained(_feeDistributor, _usd);
+        __MarketManagerStates_init_unchained(_feeDistributor);
     }
 
-    function __MarketManagerStates_init_unchained(
-        FeeDistributorUpgradeable _feeDistributor,
-        IPUSD _usd
-    ) internal onlyInitializing {
+    function __MarketManagerStates_init_unchained(FeeDistributorUpgradeable _feeDistributor) internal onlyInitializing {
         MarketManagerStatesStorage storage $ = _statesStorage();
-        ($.usd, $.feeDistributor) = (_usd, _feeDistributor);
+        $.feeDistributor = _feeDistributor;
     }
 
     /// @inheritdoc IMarketManager
@@ -72,6 +67,10 @@ abstract contract MarketManagerStatesUpgradeable is IMarketManager, Configurable
     /// @inheritdoc IMarketManager
     function globalStabilityFunds(IERC20 _market) external view override returns (uint256) {
         return _statesStorage().marketStates[_market].globalStabilityFund;
+    }
+
+    function pusd() external view returns (address) {
+        return PUSDManagerUtil.computePUSDAddress();
     }
 
     function _statesStorage() internal pure returns (MarketManagerStatesStorage storage $) {
