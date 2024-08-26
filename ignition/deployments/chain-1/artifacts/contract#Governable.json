@@ -1,0 +1,111 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Governable",
+  "sourceName": "contracts/governance/Governable.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_initialGov",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "Forbidden",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousGov",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newGov",
+          "type": "address"
+        }
+      ],
+      "name": "ChangeGovStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousGov",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newGov",
+          "type": "address"
+        }
+      ],
+      "name": "GovChanged",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "acceptGov",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newGov",
+          "type": "address"
+        }
+      ],
+      "name": "changeGov",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "gov",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingGov",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x60803460a057601f61037138819003918201601f19168301916001600160401b0383118484101760a45780849260209460405283398101031260a057516001600160a01b0381169081900360a0575f80546001600160a01b031981168317825560405192916001600160a01b03909116907f3d1e4c3a68fed9f4f8315582b7297cf8fa264bc8e6704287603ba8c72bf05ac29080a36102b890816100b98239f35b5f80fd5b634e487b7160e01b5f52604160045260245ffdfe6080806040526004361015610012575f80fd5b5f3560e01c90816312d43a511461025e57508063252408101461020d5780637bc6729b146101335763a962ef1e14610048575f80fd5b3461012f5760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760043573ffffffffffffffffffffffffffffffffffffffff811680910361012f5773ffffffffffffffffffffffffffffffffffffffff5f541680330361010757817fffffffffffffffffffffffff000000000000000000000000000000000000000060015416176001557fb9911e2099e372c216862258dc462bb65da46a2c854536c8b1acae619d0d62ed5f80a3005b7fee90c468000000000000000000000000000000000000000000000000000000005f5260045ffd5b5f80fd5b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760015473ffffffffffffffffffffffffffffffffffffffff81163303610107577fffffffffffffffffffffffff0000000000000000000000000000000000000000166001555f54337fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f5573ffffffffffffffffffffffffffffffffffffffff3391167f3d1e4c3a68fed9f4f8315582b7297cf8fa264bc8e6704287603ba8c72bf05ac25f80a3005b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f57602073ffffffffffffffffffffffffffffffffffffffff60015416604051908152f35b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760209073ffffffffffffffffffffffffffffffffffffffff5f54168152f3fea164736f6c634300081a000a",
+  "deployedBytecode": "0x6080806040526004361015610012575f80fd5b5f3560e01c90816312d43a511461025e57508063252408101461020d5780637bc6729b146101335763a962ef1e14610048575f80fd5b3461012f5760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760043573ffffffffffffffffffffffffffffffffffffffff811680910361012f5773ffffffffffffffffffffffffffffffffffffffff5f541680330361010757817fffffffffffffffffffffffff000000000000000000000000000000000000000060015416176001557fb9911e2099e372c216862258dc462bb65da46a2c854536c8b1acae619d0d62ed5f80a3005b7fee90c468000000000000000000000000000000000000000000000000000000005f5260045ffd5b5f80fd5b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760015473ffffffffffffffffffffffffffffffffffffffff81163303610107577fffffffffffffffffffffffff0000000000000000000000000000000000000000166001555f54337fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f5573ffffffffffffffffffffffffffffffffffffffff3391167f3d1e4c3a68fed9f4f8315582b7297cf8fa264bc8e6704287603ba8c72bf05ac25f80a3005b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f57602073ffffffffffffffffffffffffffffffffffffffff60015416604051908152f35b3461012f575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012f5760209073ffffffffffffffffffffffffffffffffffffffff5f54168152f3fea164736f6c634300081a000a",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

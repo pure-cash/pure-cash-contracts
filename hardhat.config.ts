@@ -79,7 +79,7 @@ const config: HardhatUserConfig = {
             chainId: 1,
             accounts: accounts,
             ignition: {
-                maxFeePerGasLimit: ethers.parseUnits("1", "gwei"),
+                maxFeePerGasLimit: ethers.parseUnits("2", "gwei"),
                 // maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
             },
         },
@@ -88,6 +88,7 @@ const config: HardhatUserConfig = {
         apiKey: {
             arbitrumSepolia: `${process.env.ARBISCAN_API_KEY}`,
             arbitrumOne: `${process.env.ARBISCAN_API_KEY}`,
+            mainnet: `${process.env.ETHERSCAN_API_KEY}`,
         },
     },
     sourcify: {

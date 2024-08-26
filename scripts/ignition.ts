@@ -102,7 +102,7 @@ function runShellCommand(command: string, args: string[]): Promise<void> {
             if (code === 0) {
                 resolve();
             } else {
-                reject(new Error(`Child process exited with code ${code}`));
+                reject(new Error(`Child process exited with code ${code}, command: ${command}, args: ${args}`));
             }
         });
 
