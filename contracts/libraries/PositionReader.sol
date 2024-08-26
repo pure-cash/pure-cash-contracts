@@ -34,6 +34,8 @@ library PositionReader {
         state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
         state.tokenBalance = marketManager.tokenBalances(_market);
 
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        pusd.mint(address(this), _amountIn); // for mock
         (, burnPUSDReceiveAmount) = PUSDManagerUtil.burn(
             state,
             marketConfig,
@@ -43,7 +45,6 @@ library PositionReader {
                 amount: _amountIn,
                 callback: IPUSDManagerCallback(address(this)), // for mock
                 indexPrice: _indexPrice,
-                usd: IPUSD(address(this)), // for mock
                 receiver: address(this)
             }),
             bytes("")
@@ -124,6 +125,7 @@ library PositionReader {
 
         DecreasePositionRes memory res = _decreasePosition(_readerState, position, _size, _indexPrice);
 
+        PUSDManagerUtil.deployPUSD(); // for mock
         if (res.decreasePositionReceiveAmount > 0) {
             (, mintPUSDTokenValue) = PUSDManagerUtil.mint(
                 state,
@@ -134,7 +136,6 @@ library PositionReader {
                     amount: res.decreasePositionReceiveAmount,
                     callback: IPUSDManagerCallback(address(this)), // for mock
                     indexPrice: _indexPrice,
-                    usd: IPUSD(address(this)), // for mock
                     receiver: address(this)
                 }),
                 msg.data // for mock

@@ -12,12 +12,11 @@ contract PositionRouter2 is IPositionRouter2, PositionRouterCommon {
 
     constructor(
         Governable _govImpl,
-        IPUSD _usd,
         IMarketManager _marketManager,
         IWETHMinimum _weth,
         EstimatedGasLimitType[] memory _estimatedGasLimitTypes,
         uint256[] memory _estimatedGasLimits
-    ) PositionRouterCommon(_govImpl, _usd, _marketManager, _weth, _estimatedGasLimitTypes, _estimatedGasLimits) {}
+    ) PositionRouterCommon(_govImpl, _marketManager, _weth, _estimatedGasLimitTypes, _estimatedGasLimits) {}
 
     /// @inheritdoc IPositionRouter2
     function createMintLPT(
@@ -54,6 +53,7 @@ contract PositionRouter2 is IPositionRouter2, PositionRouterCommon {
         uint256 minExecutionFee = _estimateGasFees(EstimatedGasLimitType.MintLPTPayPUSD);
         if (msg.value < minExecutionFee) revert InsufficientExecutionFee(msg.value, minExecutionFee);
 
+        IERC20 usd = IERC20(PUSDManagerUtil.computePUSDAddress(address(marketManager)));
         usd.safePermit(address(marketManager), _permitData);
         marketManager.pluginTransfer(usd, msg.sender, address(this), _pusdAmount);
 
@@ -108,8 +108,12 @@ contract PositionRouter2 is IPositionRouter2, PositionRouterCommon {
 
         delete blockNumbers[id];
 
-        if (_param.payPUSD) usd.safeTransfer(_param.account, _param.liquidityDelta);
-        else _transferRefund(_param.market, _param.account, _param.liquidityDelta);
+        if (_param.payPUSD) {
+            IERC20 usd = IERC20(PUSDManagerUtil.computePUSDAddress(address(marketManager)));
+            usd.safeTransfer(_param.account, _param.liquidityDelta);
+        } else {
+            _transferRefund(_param.market, _param.account, _param.liquidityDelta);
+        }
 
         // transfer out execution fee
         _transferOutETH(_param.executionFee, _executionFeeReceiver);

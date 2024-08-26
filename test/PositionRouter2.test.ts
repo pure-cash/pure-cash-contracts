@@ -1,7 +1,6 @@
 import {loadFixture, mine, time} from "@nomicfoundation/hardhat-network-helpers";
 import {expect} from "chai";
-import {ethers, network, upgrades} from "hardhat";
-import {PUSDUpgradeable} from "../typechain-types";
+import {ethers} from "hardhat";
 import {genERC20PermitData, resetAllowance} from "./shared/Permit";
 import {keccak256} from "@ethersproject/keccak256";
 import {defaultAbiCoder} from "@ethersproject/abi";
@@ -21,19 +20,19 @@ describe("PositionRouter2", () => {
         const market = await ethers.deployContract("ERC20Test", ["Market", "MKT", marketDecimals, 0n]);
         await market.mint(trader.address, 10000n * 10n ** marketDecimals);
 
-        const PUSD = await ethers.getContractFactory("PUSDUpgradeable");
-        const usd = (await upgrades.deployProxy(PUSD, [owner.address], {kind: "uups"})) as unknown as PUSDUpgradeable;
-        await usd.setMinter(owner.address, true);
-        const usdDecimals = await usd.decimals();
-        await usd.mint(trader.address, 10000n * 10n ** usdDecimals);
-
         const liquidityUtil = await ethers.deployContract("LiquidityUtil");
-        const marketManager = await ethers.deployContract("MockMarketManager", [usd.target, weth.target], {
+        const pusdManagerUtil = await ethers.deployContract("PUSDManagerUtil");
+        const marketManager = await ethers.deployContract("MockMarketManager", [weth.target], {
             value: 100n,
             libraries: {
                 LiquidityUtil: liquidityUtil,
+                PUSDManagerUtil: pusdManagerUtil,
             },
         });
+        const usd = await ethers.getContractAt("PUSD", await marketManager.usd());
+        const usdDecimals = await usd.decimals();
+        await marketManager.mintPUSDArbitrary(trader.address, 10000n * 10n ** usdDecimals);
+
         await marketManager.deployLPToken(market.target, market.symbol + "-LP");
         await marketManager.deployLPToken(weth.target, weth.symbol + "-LP");
         const lpToken = await ethers.getContractAt("LPToken", await marketManager.lpTokens(market.target));
@@ -49,7 +48,6 @@ describe("PositionRouter2", () => {
         const govImpl = await ethers.deployContract("Governable", [owner.address]);
         const positionRouter2 = await ethers.deployContract("PositionRouter2", [
             govImpl.target,
-            usd.target,
             marketManager.target,
             await weth.getAddress(),
             await positionRouter2EstimatedGasLimitTypes(),

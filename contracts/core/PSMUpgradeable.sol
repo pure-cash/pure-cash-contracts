@@ -17,12 +17,8 @@ abstract contract PSMUpgradeable is MarketManagerStatesUpgradeable {
     bytes32 private constant PSM_UPGRADEABLE_STORAGE =
         0x9f37cc75d7cdaa7a198c13b92cf96b51104a2ab8d71dd4736b100ec4a2373c00;
 
-    function __PSM_init(
-        address _initialGov,
-        FeeDistributorUpgradeable _feeDistributor,
-        IPUSD _usd
-    ) internal onlyInitializing {
-        MarketManagerStatesUpgradeable.__MarketManagerStates_init(_initialGov, _feeDistributor, _usd);
+    function __PSM_init(address _initialGov, FeeDistributorUpgradeable _feeDistributor) internal onlyInitializing {
+        MarketManagerStatesUpgradeable.__MarketManagerStates_init(_initialGov, _feeDistributor);
     }
 
     /// @inheritdoc IPSM
@@ -34,7 +30,7 @@ abstract contract PSMUpgradeable is MarketManagerStatesUpgradeable {
     function updatePSMCollateralCap(IERC20 _collateral, uint120 _cap) external override {
         _onlyGov();
 
-        _psmStorage().collaterals[_collateral].updatePSMCollateralCap(_collateral, _cap, _statesStorage().usd);
+        _psmStorage().collaterals[_collateral].updatePSMCollateralCap(_collateral, _cap);
     }
 
     /// @inheritdoc IPSM
@@ -44,7 +40,7 @@ abstract contract PSMUpgradeable is MarketManagerStatesUpgradeable {
     ) external override nonReentrantToken(_collateral) returns (uint64 receiveAmount) {
         _onlyPlugin();
 
-        receiveAmount = _psmStorage().collaterals[_collateral].psmMint(_collateral, _receiver, _statesStorage().usd);
+        receiveAmount = _psmStorage().collaterals[_collateral].psmMint(_collateral, _receiver);
     }
 
     /// @inheritdoc IPSM
@@ -54,7 +50,7 @@ abstract contract PSMUpgradeable is MarketManagerStatesUpgradeable {
     ) external override nonReentrantToken(_collateral) returns (uint96 receiveAmount) {
         _onlyPlugin();
 
-        receiveAmount = _psmStorage().collaterals[_collateral].psmBurn(_collateral, _receiver, _statesStorage().usd);
+        receiveAmount = _psmStorage().collaterals[_collateral].psmBurn(_collateral, _receiver);
     }
 
     function _psmStorage() internal pure returns (PSMStorage storage $) {

@@ -4,7 +4,7 @@ pragma solidity =0.8.26;
 import "./BaseTest.t.sol";
 import "../../contracts/test/WETH9.sol";
 import "../../contracts/test/ERC20Test.sol";
-import "../../contracts/core/PUSDUpgradeable.sol";
+import "../../contracts/core/PUSD.sol";
 import "../../contracts/test/MockChainLinkPriceFeed.sol";
 import "../../contracts/test/MockPUSDManagerCallback.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -14,7 +14,7 @@ contract MarketManagerTest is BaseTest {
     using SafeCast for *;
 
     MarketManagerUpgradeable private marketManager;
-    PUSDUpgradeable private pusd;
+    PUSD private pusd;
     FeeDistributorUpgradeable private feeDistributor;
     IERC20 private weth;
     IERC20 private dai;
@@ -25,11 +25,7 @@ contract MarketManagerTest is BaseTest {
     MockPUSDManagerCallback pusdManagerCallback;
 
     function setUp() public {
-        address impl = address(new PUSDUpgradeable());
-        pusd = PUSDUpgradeable(
-            address(new ERC1967Proxy(impl, abi.encodeWithSelector(PUSDUpgradeable.initialize.selector, address(this))))
-        );
-        impl = address(new FeeDistributorUpgradeable());
+        address impl = address(new FeeDistributorUpgradeable());
         feeDistributor = FeeDistributorUpgradeable(
             address(
                 new ERC1967Proxy(
@@ -53,14 +49,12 @@ contract MarketManagerTest is BaseTest {
                         MarketManagerUpgradeable.initialize.selector,
                         address(this),
                         feeDistributor,
-                        pusd,
                         true
                     )
                 )
             )
         );
-
-        pusd.setMinter(address(marketManager), true);
+        pusd = PUSD(marketManager.pusd());
 
         weth = IERC20(address(deployWETH9()));
         lpToken = ILPToken(LiquidityUtil.computeLPTokenAddress(weth, address(marketManager)));
@@ -925,13 +919,7 @@ contract MarketManagerTest is BaseTest {
         vm.expectRevert(abi.encodeWithSelector(Initializable.InvalidInitialization.selector));
         marketManager.upgradeToAndCall(
             newImpl,
-            abi.encodeWithSelector(
-                MarketManagerUpgradeable.initialize.selector,
-                address(this),
-                feeDistributor,
-                pusd,
-                true
-            )
+            abi.encodeWithSelector(MarketManagerUpgradeable.initialize.selector, address(this), feeDistributor, true)
         );
     }
 

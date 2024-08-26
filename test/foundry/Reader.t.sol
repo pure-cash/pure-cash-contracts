@@ -4,7 +4,7 @@ pragma solidity =0.8.26;
 import "./BaseTest.t.sol";
 import "../../contracts/test/WETH9.sol";
 import "../../contracts/misc/Reader.sol";
-import "../../contracts/core/PUSDUpgradeable.sol";
+import "../../contracts/core/PUSD.sol";
 import "../../contracts/test/MockPriceFeed.sol";
 import "../../contracts/test/ERC20Test.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -13,17 +13,12 @@ contract ReaderTest is BaseTest, IPUSDManagerCallback {
     using SafeERC20 for *;
 
     Reader reader;
-    PUSDUpgradeable pusd;
+    PUSD pusd;
     MarketManagerUpgradeable marketManager;
 
     IERC20 weth;
 
     function setUp() public {
-        address pusdImpl = address(new PUSDUpgradeable());
-        pusd = PUSDUpgradeable(
-            address(new ERC1967Proxy(pusdImpl, abi.encodeWithSelector(PUSDUpgradeable.initialize.selector, this)))
-        );
-
         address marketManagerImpl = address(new MarketManagerUpgradeable());
         marketManager = MarketManagerUpgradeable(
             address(
@@ -33,14 +28,12 @@ contract ReaderTest is BaseTest, IPUSDManagerCallback {
                         MarketManagerUpgradeable.initialize.selector,
                         this,
                         FeeDistributorUpgradeable(address(this)),
-                        pusd,
                         true
                     )
                 )
             )
         );
-
-        pusd.setMinter(address(marketManager), true);
+        pusd = PUSD(marketManager.pusd());
 
         reader = new Reader(marketManager);
         weth = IERC20(address(deployWETH9()));
@@ -150,7 +143,7 @@ contract ReaderTest is BaseTest, IPUSDManagerCallback {
         assertEq(0, position.size);
     }
 
-    function test_quoteBurnPUSDToIncreasePosition_passIF_positionAlreadyExists() public {
+    function test_quoteBurnPUSDToIncreasePosition_passIf_positionAlreadyExists() public {
         deal(address(weth), ALICE, 100 * 10 ** 18);
         vm.prank(ALICE);
         weth.safeTransfer(address(marketManager), 100 * 10 ** 18);

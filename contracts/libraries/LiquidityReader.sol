@@ -72,8 +72,12 @@ library LiquidityReader {
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(_market);
         state.packedState = packedState;
-        state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
+        state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
+
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        pusd.mint(address(this), pusdPosition.totalSupply); // for mock
 
         (, burnPUSDReceiveAmount) = PUSDManagerUtil.burn(
             state,
@@ -84,7 +88,6 @@ library LiquidityReader {
                 amount: _amountIn,
                 callback: IPUSDManagerCallback(address(this)), // for mock
                 indexPrice: _indexPrice,
-                usd: IPUSD(address(this)), // for mock
                 receiver: address(this)
             }),
             bytes("")
@@ -125,6 +128,7 @@ library LiquidityReader {
         IConfigurable.MarketConfig storage marketConfig = mockState.marketConfig;
 
         state.packedState = marketManager.packedStates(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
         state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
         state.tokenBalance = marketManager.tokenBalances(_market);
 
@@ -145,6 +149,8 @@ library LiquidityReader {
         );
         delete mockState.totalSupply; // reset totalSupply
 
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        pusd.mint(address(this), pusdPosition.totalSupply); // for mock
         (, mintPUSDTokenValue) = PUSDManagerUtil.mint(
             state,
             marketConfig,
@@ -154,7 +160,6 @@ library LiquidityReader {
                 amount: burnLPTReceiveAmount,
                 callback: IPUSDManagerCallback(address(this)), // for mock
                 indexPrice: _indexPrice,
-                usd: IPUSD(address(this)), // for mock
                 receiver: address(this)
             }),
             msg.data // for mock

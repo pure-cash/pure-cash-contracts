@@ -3,7 +3,6 @@ pragma solidity =0.8.26;
 
 import "../IWETHMinimum.sol";
 import "../libraries/MarketUtil.sol";
-import "../core/interfaces/IPUSD.sol";
 import "../libraries/PositionUtil.sol";
 import "../libraries/TransferHelper.sol";
 import "../governance/GovernableProxy.sol";
@@ -12,7 +11,6 @@ import "./interfaces/IPositionRouterCommon.sol";
 abstract contract PositionRouterCommon is IPositionRouterCommon, GovernableProxy {
     using TransferHelper for *;
 
-    IPUSD public immutable usd;
     IMarketManager public immutable marketManager;
     IWETHMinimum public immutable weth;
 
@@ -43,13 +41,11 @@ abstract contract PositionRouterCommon is IPositionRouterCommon, GovernableProxy
 
     constructor(
         Governable _govImpl,
-        IPUSD _usd,
         IMarketManager _marketManager,
         IWETHMinimum _weth,
         EstimatedGasLimitType[] memory _estimatedGasLimitTypes,
         uint256[] memory _estimatedGasLimits
     ) GovernableProxy(_govImpl) {
-        usd = _usd;
         marketManager = _marketManager;
         weth = _weth;
         minBlockDelayPublic = 50; // 10 minutes

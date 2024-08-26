@@ -40,9 +40,12 @@ contract Reader is IReader {
         IConfigurable.MarketConfig storage marketConfig = mockState.marketConfig;
 
         state.packedState = marketManager.packedStates(_market);
-        state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
+        state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
 
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        pusd.mint(address(this), pusdPosition.totalSupply); // for mock
         (payAmount, receiveAmount) = PUSDManagerUtil.mint(
             state,
             marketConfig,
@@ -52,7 +55,6 @@ contract Reader is IReader {
                 amount: _amount,
                 callback: IPUSDManagerCallback(address(this)), // for mock
                 indexPrice: _indexPrice,
-                usd: IPUSD(address(this)), // for mock
                 receiver: address(this)
             }),
             msg.data // for mock
@@ -77,9 +79,12 @@ contract Reader is IReader {
         IConfigurable.MarketConfig storage marketConfig = mockState.marketConfig;
 
         state.packedState = marketManager.packedStates(_market);
-        state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
+        state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
 
+        PUSD pusd = PUSDManagerUtil.deployPUSD(); // for mock
+        pusd.mint(address(this), pusdPosition.totalSupply);
         (payAmount, receiveAmount) = PUSDManagerUtil.burn(
             state,
             marketConfig,
@@ -89,7 +94,6 @@ contract Reader is IReader {
                 amount: _amount,
                 callback: IPUSDManagerCallback(address(this)), // for mock
                 indexPrice: _indexPrice,
-                usd: IPUSD(address(this)), // for mock
                 receiver: address(this)
             }),
             bytes("")
@@ -218,17 +222,12 @@ contract Reader is IReader {
 
     // The following methods are mock methods for calculation
 
-    function PUSDManagerCallback(IERC20, uint96 _payAmount, uint96, bytes calldata) external {
+    function PUSDManagerCallback(IERC20 _token, uint96 _payAmount, uint96, bytes calldata) external {
         require(msg.sender == address(this));
         readerState.mockState.totalSupply = _payAmount;
-    }
 
-    function mint(address, uint256) external view {
-        require(msg.sender == address(this));
-    }
-
-    function burn(uint256) external view {
-        require(msg.sender == address(this));
+        if (address(_token) == PUSDManagerUtil.computePUSDAddress())
+            PUSD(address(_token)).mint(address(this), _payAmount);
     }
 
     function transfer(address, uint256) external view returns (bool) {

@@ -2,7 +2,6 @@
 pragma solidity =0.8.26;
 
 import "./PSMUpgradeable.sol";
-import "../libraries/PUSDManagerUtil.sol";
 import "../libraries/LiquidityUtil.sol";
 import "../plugins/PluginManagerUpgradeable.sol";
 import "../oracle/PriceFeedUpgradeable.sol";
@@ -24,10 +23,12 @@ contract MarketManagerUpgradeable is PSMUpgradeable, PriceFeedUpgradeable {
     function initialize(
         address _initialGov,
         FeeDistributorUpgradeable _feeDistributor,
-        IPUSD _usd,
         bool _ignoreReferencePriceFeedError
     ) public initializer {
-        PSMUpgradeable.__PSM_init(_initialGov, _feeDistributor, _usd);
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        emit IPUSDManager.PUSDDeployed(pusd);
+
+        PSMUpgradeable.__PSM_init(_initialGov, _feeDistributor);
         PriceFeedUpgradeable.__PriceFeed_init_unchained(_ignoreReferencePriceFeedError);
     }
 
@@ -204,7 +205,6 @@ contract MarketManagerUpgradeable is PSMUpgradeable, PriceFeedUpgradeable {
                 amount: _amount,
                 callback: _callback,
                 indexPrice: _getMinPrice(_market),
-                usd: $.usd,
                 receiver: _receiver
             }),
             _data
@@ -233,7 +233,6 @@ contract MarketManagerUpgradeable is PSMUpgradeable, PriceFeedUpgradeable {
                 amount: _amount,
                 callback: _callback,
                 indexPrice: _getMaxPrice(_market),
-                usd: $.usd,
                 receiver: _receiver
             }),
             _data
@@ -267,7 +266,7 @@ contract MarketManagerUpgradeable is PSMUpgradeable, PriceFeedUpgradeable {
         MarketManagerStatesStorage storage $ = _statesStorage();
         State storage state = $.marketStates[_market];
 
-        return state.repayLiquidityBufferDebt($.usd, _market, _account, _receiver);
+        return state.repayLiquidityBufferDebt(_market, _account, _receiver);
     }
 
     /// @inheritdoc ConfigurableUpgradeable

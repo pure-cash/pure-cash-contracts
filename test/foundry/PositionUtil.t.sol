@@ -6,7 +6,7 @@ import "../../contracts/core/interfaces/IMarketManager.sol";
 import "../../contracts/libraries/PositionUtil.sol";
 import "../../contracts/libraries/LiquidityUtil.sol";
 import "../../contracts/core/LPToken.sol";
-import "../../contracts/core/PUSDUpgradeable.sol";
+import "../../contracts/core/PUSD.sol";
 import "../../contracts/test/MockPriceFeed.sol";
 import {LONG, SHORT} from "../../contracts/types/Side.sol";
 import {Math as _math} from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -22,7 +22,7 @@ contract PositionUtilTest is BaseTest {
 
     IERC20 market = IERC20(0x82aF49447D8a07e3bd95BD0d56f35241523fBab1);
     ILPToken lpToken = LiquidityUtil.deployLPToken(market, "tLPT");
-    IPUSD pusd = new PUSDUpgradeable();
+    IPUSD pusd = new PUSD();
     uint64 price = uint64(31681133113133);
 
     function setUp() public {

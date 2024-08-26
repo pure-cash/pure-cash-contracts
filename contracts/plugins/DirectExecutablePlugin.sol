@@ -3,7 +3,7 @@ pragma solidity =0.8.26;
 
 import "../IWETHMinimum.sol";
 import "../libraries/MarketUtil.sol";
-import "../core/interfaces/IPUSD.sol";
+import "../libraries/PUSDManagerUtil.sol";
 import "../governance/GovernableProxy.sol";
 import "./interfaces/IDirectExecutablePlugin.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract DirectExecutablePlugin is IDirectExecutablePlugin, GovernableProxy {
     using MarketUtil for *;
 
-    IPUSD public immutable usd;
     IMarketManager public immutable marketManager;
     IWETHMinimum public immutable weth;
 
@@ -25,13 +24,8 @@ contract DirectExecutablePlugin is IDirectExecutablePlugin, GovernableProxy {
         if (msg.sender != address(weth)) revert IMarketErrors.InvalidCaller(address(weth));
     }
 
-    constructor(
-        Governable _govImpl,
-        IPUSD _usd,
-        IMarketManager _marketManager,
-        IWETHMinimum _weth
-    ) GovernableProxy(_govImpl) {
-        (usd, marketManager, weth) = (_usd, _marketManager, _weth);
+    constructor(Governable _govImpl, IMarketManager _marketManager, IWETHMinimum _weth) GovernableProxy(_govImpl) {
+        (marketManager, weth) = (_marketManager, _weth);
     }
 
     /// @inheritdoc IDirectExecutablePlugin
@@ -65,23 +59,21 @@ contract DirectExecutablePlugin is IDirectExecutablePlugin, GovernableProxy {
     ) external override {
         require(liquidityBufferDebtPayers[msg.sender] || allowAnyoneRepayLiquidityBufferDebt, Forbidden());
 
-        IWETHMinimum weth_ = weth;
-        IPUSD usd_ = usd;
-        IMarketManager marketManager_ = marketManager;
-        IMarketManager.LiquidityBufferModule memory lbm = marketManager_.liquidityBufferModules(_market);
+        IPUSD usd = IPUSD(PUSDManagerUtil.computePUSDAddress(address(marketManager)));
+        IMarketManager.LiquidityBufferModule memory lbm = marketManager.liquidityBufferModules(_market);
 
-        uint256 balance = usd_.balanceOf(address(marketManager_));
+        uint256 balance = usd.balanceOf(address(marketManager));
         if (_amount > 0 && balance + _amount > lbm.pusdDebt) revert TooMuchRepaid(balance, _amount, lbm.pusdDebt);
-        usd_.safePermit(address(marketManager_), _permitData);
-        marketManager_.pluginTransfer(usd_, msg.sender, address(marketManager_), _amount);
+        usd.safePermit(address(marketManager), _permitData);
+        marketManager.pluginTransfer(usd, msg.sender, address(marketManager), _amount);
 
-        if (address(weth_) == address(_market) && !MarketUtil.isDeployedContract(_receiver)) {
-            uint128 receiveAmount = marketManager_.repayLiquidityBufferDebt(_market, msg.sender, address(this));
+        if (address(weth) == address(_market) && !MarketUtil.isDeployedContract(_receiver)) {
+            uint128 receiveAmount = marketManager.repayLiquidityBufferDebt(_market, msg.sender, address(this));
 
-            weth_.withdraw(receiveAmount);
+            weth.withdraw(receiveAmount);
             Address.sendValue(payable(_receiver), receiveAmount);
         } else {
-            marketManager_.repayLiquidityBufferDebt(_market, msg.sender, _receiver);
+            marketManager.repayLiquidityBufferDebt(_market, msg.sender, _receiver);
         }
     }
 
@@ -94,15 +86,14 @@ contract DirectExecutablePlugin is IDirectExecutablePlugin, GovernableProxy {
     ) external override returns (uint64 receiveAmount) {
         require(psmMinters[msg.sender] || allowAnyoneUsePSM, Forbidden());
 
-        IMarketManager marketManager_ = marketManager;
-        IPSM.CollateralState memory state = marketManager_.psmCollateralStates(_collateral);
+        IPSM.CollateralState memory state = marketManager.psmCollateralStates(_collateral);
 
-        uint256 balance = _collateral.balanceOf(address(marketManager_));
+        uint256 balance = _collateral.balanceOf(address(marketManager));
         if (_amount > 0 && balance + _amount > state.cap) revert PSMCapExceeded(balance, _amount, state.cap);
 
-        _collateral.safePermit(address(marketManager_), _permitData);
-        marketManager_.pluginTransfer(_collateral, msg.sender, address(marketManager_), _amount);
-        receiveAmount = marketManager_.psmMintPUSD(_collateral, _receiver);
+        _collateral.safePermit(address(marketManager), _permitData);
+        marketManager.pluginTransfer(_collateral, msg.sender, address(marketManager), _amount);
+        receiveAmount = marketManager.psmMintPUSD(_collateral, _receiver);
     }
 
     /// @inheritdoc IDirectExecutablePlugin
@@ -112,9 +103,9 @@ contract DirectExecutablePlugin is IDirectExecutablePlugin, GovernableProxy {
         address _receiver,
         bytes calldata _permitData
     ) external override returns (uint96 receiveAmount) {
-        IMarketManager marketManager_ = marketManager;
-        usd.safePermit(address(marketManager_), _permitData);
-        marketManager_.pluginTransfer(usd, msg.sender, address(marketManager_), _amount);
-        receiveAmount = marketManager_.psmBurnPUSD(_collateral, _receiver);
+        IERC20 usd = IERC20(PUSDManagerUtil.computePUSDAddress(address(marketManager)));
+        usd.safePermit(address(marketManager), _permitData);
+        marketManager.pluginTransfer(usd, msg.sender, address(marketManager), _amount);
+        receiveAmount = marketManager.psmBurnPUSD(_collateral, _receiver);
     }
 }
