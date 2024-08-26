@@ -74,12 +74,12 @@ const config: HardhatUserConfig = {
                 // maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
             },
         },
-        "ethereum-test": {
+        "ethereum-mainnet": {
             url: `https://rpc.particle.network/evm-chain?chainId=1&projectUuid=${process.env.PARTICLE_PROJECT_ID}&projectKey=${process.env.PARTICLE_PROJECT_KEY}`,
             chainId: 1,
             accounts: accounts,
             ignition: {
-                maxFeePerGasLimit: ethers.parseUnits("20", "gwei"),
+                maxFeePerGasLimit: ethers.parseUnits("1", "gwei"),
                 // maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
             },
         },
@@ -102,8 +102,7 @@ const config: HardhatUserConfig = {
             create2: {
                 // To learn more about salts, see the CreateX documentation
                 // https://github.com/pcaversaccio/createx?tab=readme-ov-file#security-considerations
-                // TODO - change this to a unique salt for officially launching
-                salt: "0x67037B0a6EFe65FE5D9897D61aBc0fcdB205ecb0000000000000000000082001",
+                salt: "0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E000000000000000000082601",
             },
         },
     },
