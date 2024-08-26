@@ -69,7 +69,6 @@ export default buildModule("deploy", (m) => {
         ]);
         const Governable = m.contract("Governable", [owner]);
 
-
         const FeeDistributorUpgradeable = deployUpgradeable(m, "FeeDistributorUpgradeable", [
             owner,
             network.feeDistributorCfg.protocolFeeRate,
@@ -91,11 +90,11 @@ export default buildModule("deploy", (m) => {
             },
         );
 
-        const MarketManagerUpgradeable = m.contractAt("MarketManagerUpgradeable", marketManagerUpgradeableTx)
+        const MarketManagerUpgradeable = m.contractAt("MarketManagerUpgradeable", marketManagerUpgradeableTx);
         const pusdAddress = m.readEventArgument(marketManagerUpgradeableTx, "PUSDDeployed", "pusd", {
             id: "readPUSD",
-            emitter: MarketManagerUpgradeable
-        })
+            emitter: MarketManagerUpgradeable,
+        });
         const PUSD = m.contractAt("PUSD", pusdAddress);
 
         const positionRouterExecutionTypes = Object.keys(network.estimatedGasLimits.positionRouter);
@@ -175,7 +174,7 @@ export default buildModule("deploy", (m) => {
             Reader,
             Governable,
             PurecashTimelockController,
-            PUSD
+            PUSD,
         };
     });
 
