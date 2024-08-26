@@ -31,11 +31,12 @@ library PositionReader {
         IConfigurable.MarketConfig storage marketConfig = mockState.marketConfig;
 
         state.packedState = marketManager.packedStates(_market);
-        state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
+        state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
 
         PUSD pusd = PUSDManagerUtil.deployPUSD();
-        pusd.mint(address(this), _amountIn); // for mock
+        pusd.mint(address(this), pusdPosition.totalSupply - _amountIn); // for mock
         (, burnPUSDReceiveAmount) = PUSDManagerUtil.burn(
             state,
             marketConfig,
@@ -112,7 +113,8 @@ library PositionReader {
         mockState.marketConfig = marketManager.marketConfigs(_market);
         IConfigurable.MarketConfig storage marketConfig = mockState.marketConfig;
         state.packedState = marketManager.packedStates(_market);
-        state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
+        state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
         // settle position
         IMarketPosition.Position memory position = marketManager.longPositions(_market, _account);
@@ -125,7 +127,8 @@ library PositionReader {
 
         DecreasePositionRes memory res = _decreasePosition(_readerState, position, _size, _indexPrice);
 
-        PUSDManagerUtil.deployPUSD(); // for mock
+        PUSD pusd = PUSDManagerUtil.deployPUSD();
+        pusd.mint(address(this), pusdPosition.totalSupply); // for mock
         if (res.decreasePositionReceiveAmount > 0) {
             (, mintPUSDTokenValue) = PUSDManagerUtil.mint(
                 state,

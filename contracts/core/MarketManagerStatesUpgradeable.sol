@@ -75,6 +75,6 @@ abstract contract MarketManagerStatesUpgradeable is IMarketManager, Configurable
 
     function _statesStorage() internal pure returns (MarketManagerStatesStorage storage $) {
         // prettier-ignore
-        assembly {$.slot := MARKET_MANAGER_STATES_UPGRADEABLE_STORAGE}
+        assembly { $.slot := MARKET_MANAGER_STATES_UPGRADEABLE_STORAGE }
     }
 }

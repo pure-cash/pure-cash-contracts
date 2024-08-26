@@ -3,6 +3,7 @@ pragma solidity =0.8.26;
 
 import "./interfaces/IPUSD.sol";
 import "../libraries/Constants.sol";
+import "../governance/Governable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 contract PUSD is ERC20, ERC20Permit, IPUSD {
@@ -19,14 +20,14 @@ contract PUSD is ERC20, ERC20Permit, IPUSD {
 
     /// @inheritdoc IPUSD
     function mint(address _to, uint256 _value) external override {
-        require(msg.sender == marketManager, InvalidMinter());
+        require(msg.sender == marketManager, Governable.Forbidden());
 
         _mint(_to, _value);
     }
 
     /// @inheritdoc IPUSD
     function burn(uint256 _value) external override {
-        require(msg.sender == marketManager, InvalidMinter());
+        require(msg.sender == marketManager, Governable.Forbidden());
 
         _burn(msg.sender, _value);
     }

@@ -7,7 +7,6 @@ import "./LiquidityUtil.sol";
 import "./UnsafeMath.sol";
 import "./SpreadUtil.sol";
 import "../core/PUSD.sol";
-import "../core/interfaces/IPUSD.sol";
 import "../core/interfaces/IMarketManager.sol";
 import {LONG, SHORT} from "../types/Side.sol";
 import "@openzeppelin/contracts/utils/Create2.sol";
@@ -19,7 +18,7 @@ library PUSDManagerUtil {
     using UnsafeMath for *;
 
     bytes32 internal constant PUSD_SALT = keccak256("Pure USD");
-    bytes32 internal constant PUSD_INIT_CODE_HASH = 0xec5a8a3b8b4d8e1a55a8df1fccef3d227fe8e4bbc687abdbdbd6d659a47bf0f7;
+    bytes32 internal constant PUSD_INIT_CODE_HASH = 0x833a3129a7c49096ba2bc346ab64e2bbec674f4181bf8e6dedfa83aea7fb0fec;
 
     struct MintParam {
         IERC20 market;

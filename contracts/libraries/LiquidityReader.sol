@@ -77,7 +77,7 @@ library LiquidityReader {
         state.tokenBalance = marketManager.tokenBalances(_market);
 
         PUSD pusd = PUSDManagerUtil.deployPUSD();
-        pusd.mint(address(this), pusdPosition.totalSupply); // for mock
+        pusd.mint(address(this), pusdPosition.totalSupply - _amountIn); // for mock
 
         (, burnPUSDReceiveAmount) = PUSDManagerUtil.burn(
             state,

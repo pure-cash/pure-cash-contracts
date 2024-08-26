@@ -18,7 +18,7 @@ contract PUSDTest is Test {
 
     function test_mint_revertIf_notMinter() public {
         vm.prank(address(0x1));
-        vm.expectRevert(abi.encodeWithSelector(IPUSD.InvalidMinter.selector));
+        vm.expectRevert(abi.encodeWithSelector(Governable.Forbidden.selector));
         pusd.mint(address(0x1), 100);
     }
 
@@ -30,7 +30,7 @@ contract PUSDTest is Test {
 
     function test_burn_revertIf_notMinter() public {
         vm.prank(address(0x1));
-        vm.expectRevert(abi.encodeWithSelector(IPUSD.InvalidMinter.selector));
+        vm.expectRevert(abi.encodeWithSelector(Governable.Forbidden.selector));
         pusd.burn(100);
     }
 
