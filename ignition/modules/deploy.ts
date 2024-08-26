@@ -259,12 +259,6 @@ export default buildModule("deploy", (m) => {
             m.call(MixedExecutor, "setExecutor", [item, true], {id: "setExecutor_" + item});
         }
 
-        for (let item of network.tokenToStake) {
-            m.call(StakingUpgradeable, "setMaxStakedLimit", [item.token, item.limit], {
-                id: "setMaxStakedLimit_" + item.token,
-            });
-        }
-
         m.call(PUSDUpgradeable, "setMinter", [MarketManagerUpgradeable, true], {id: "PUSD_setMinter"});
         m.call(MarketManagerUpgradeable, "updateUpdater", [MixedExecutor], {id: "PriceFeed_updateUpdater"});
 

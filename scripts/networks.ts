@@ -172,7 +172,7 @@ export const networks = {
             },
         ],
     },
-    "ethereum-test": {
+    "ethereum-mainnet": {
         estimatedGasLimits: defaultExecutionGasLimit,
         maxCumulativeDeltaDiff: defaultMaxCumulativeDeltaDiff,
         feeDistributorCfg: defaultFeeDistributorCfg,
@@ -186,7 +186,14 @@ export const networks = {
                 tokenDecimals: 18,
                 chainLinkPriceFeed: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419", // https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
                 maxCumulativeDeltaDiff: defaultMaxCumulativeDeltaDiff,
-                marketCfg: defaultCfg,
+                marketCfg: {
+                    ...defaultCfg,
+                    liquidationFeeRatePerPosition: parsePercent("2%"),
+                    liquidityCap: ethers.parseUnits("5000", "ether"),
+                    protocolFeeRate: parsePercent("65%"),
+                    riskFreeTime: 3600,
+                    stableCoinSupplyCap: BigInt(5e7) * 10n ** 6n,
+                },
             },
             // {
             //     tokenSymbol: "WBTC",
@@ -199,19 +206,18 @@ export const networks = {
             //     marketCfg: wbtcCfg,
             // },
         ],
-        mixedExecutors: ["0xF8c4Da257EE024eA70fFd36287a8C2B5072f7114"],
+        mixedExecutors: ["0xdb0cFc4c77c2FFab0fCFB8714479325E9762c5BD"],
         timelockController: {
-            // Safe account(threshold:1): [0x67037B0a6EFe65FE5D9897D61aBc0fcdB205ecb0, 0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E]
-            proposers: ["0x33ceaC15450B33dC1023c1ebfC8810b1E811b234"],
+            proposers: ["0x762B7E4072fd1E0b9af3540dD0ED51e156Cf6d60"],
             executors: [AddressZero],
             admin: AddressZero,
-            minDelay: 0, // TODO
+            minDelay: 300,
         },
         collaterals: [
             {
                 symbol: "DAI",
                 token: "0x6B175474E89094C44Da98b954EedeAC495271d0F", // https://etherscan.io/address/0x6B175474E89094C44Da98b954EedeAC495271d0F
-                cap: ethers.parseUnits("10000000", "ether"),
+                cap: ethers.parseUnits("50000000", "ether"),
             },
         ],
         tokenToStake: [
