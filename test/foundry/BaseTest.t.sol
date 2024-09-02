@@ -29,11 +29,13 @@ abstract contract BaseTest is Test {
         cfg.protocolFeeRate = 0.5 * 1e7;
         cfg.maxFeeRate = 0.02 * 1e7;
         cfg.maxBurningRate = 0.95 * 1e7;
+        cfg.liquidityTradingFeeRate = 0.0005 * 1e7;
 
         cfg.minMintingRate = 0;
         cfg.riskFreeTime = 7200;
         cfg.liquidityScale = 100e4 * 1e18;
         cfg.stableCoinSupplyCap = 10e8 * 1e6;
+        cfg.maxShortSizeRate = 2 * 1e7;
     }
 
     function deployWETH9() internal returns (WETH9) {

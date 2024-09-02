@@ -113,12 +113,18 @@ library PUSDManagerUtil {
         (uint128 lpNetSize, uint128 lpLiquidity) = (packedState.lpNetSize, packedState.lpLiquidity);
         if (sizeDelta > lpNetSize) revert IMarketErrors.InsufficientSizeToDecrease(sizeDelta, lpNetSize);
 
+        uint128 sizeBefore = position.size;
+        uint128 sizeAfter;
         unchecked {
-            uint128 minMintingSizeCap = uint128(
-                (uint256(_cfg.minMintingRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR
-            );
+            // Because the short position is always less than or equal to the long position,
+            // there will be no overflow here.
+            sizeAfter = sizeBefore + sizeDelta;
+            uint256 maxShortSize = (uint256(_cfg.maxShortSizeRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR;
+            if (sizeAfter > maxShortSize) revert IMarketErrors.MaxShortSizeExceeded(sizeAfter, maxShortSize);
+
+            uint256 minMintingSizeCap = (uint256(_cfg.minMintingRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR;
             if (lpNetSize - sizeDelta < minMintingSizeCap)
-                revert IMarketErrors.MinMintingSizeCapNotMet(lpNetSize, sizeDelta, minMintingSizeCap);
+                revert IMarketErrors.MinMintingSizeCapNotMet(lpNetSize, sizeDelta, uint128(minMintingSizeCap));
         }
 
         // settle liquidity
@@ -154,7 +160,6 @@ library PUSDManagerUtil {
         payAmount = actualPayAmount;
         _state.tokenBalance += payAmount;
 
-        uint128 sizeBefore = position.size;
         uint64 entryPriceAfter = PositionUtil.calcNextEntryPrice(
             SHORT,
             sizeBefore,
@@ -163,13 +168,9 @@ library PUSDManagerUtil {
             _param.indexPrice
         );
 
-        unchecked {
-            position.totalSupply = totalSupplyAfter;
-            // Because the short position is always less than or equal to the long position,
-            // there will be no overflow
-            position.size = sizeBefore + sizeDelta;
-            position.entryPrice = entryPriceAfter;
-        }
+        position.totalSupply = totalSupplyAfter;
+        position.size = sizeAfter;
+        position.entryPrice = entryPriceAfter;
 
         spreadFactorAfterX96 = SpreadUtil.calcSpreadFactorAfterX96(spreadFactorAfterX96, SHORT, sizeDelta);
         _refreshSpreadFactor(packedState, _param.market, spreadFactorAfterX96);

@@ -98,6 +98,8 @@ interface IConfigurable {
     error InvalidStableCoinSupplyCap(uint256 stablecoinSupplyCap);
     /// @notice Invalid decimals
     error InvalidDecimals(uint8 decimals);
+    /// @notice Invalid liquidity trading fee rate
+    error InvalidLiquidityTradingFeeRate(uint24 liquidityTradingFeeRate);
 
     /// @notice Checks if a market is enabled
     /// @param market The target market contract address, such as the contract address of WETH

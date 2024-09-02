@@ -24,6 +24,8 @@ interface IMarketErrors {
     error BalanceRateCapExceeded();
     /// @notice Error thrown when min minting size cap is not met
     error MinMintingSizeCapNotMet(uint128 netSize, uint128 sizeDelta, uint128 minMintingSizeCap);
+    /// @notice Error thrown when max short size cap is exceeded
+    error MaxShortSizeExceeded(uint128 sizeAfter, uint256 maxShortSize);
     /// @notice Error thrown when max burning size cap is exceeded
     error MaxBurningSizeCapExceeded(uint128 netSize, uint128 sizeDelta, uint256 maxBurningSizeCap);
     /// @notice Insufficient balance

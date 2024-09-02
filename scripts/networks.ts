@@ -7,7 +7,7 @@ const defaultCfg = {
     minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
     maxLeveragePerPosition: 10n,
     liquidationFeeRatePerPosition: parsePercent("2.5%"),
-    maxSizeRatePerPosition: parsePercent("100%"),
+    maxSizeRatePerPosition: parsePercent("0.1%"),
     liquidationExecutionFee: ethers.parseUnits("0.00032", "ether"),
     liquidityCap: ethers.parseUnits("200000", "ether"),
     liquidityBufferModuleEnabled: true,
@@ -16,11 +16,13 @@ const defaultCfg = {
     protocolFeeRate: parsePercent("50%"),
     openPositionThreshold: parsePercent("90%"),
     maxFeeRate: parsePercent("2%"),
-    minMintingRate: parsePercent("50%"),
+    minMintingRate: parsePercent("70%"),
     maxBurningRate: parsePercent("95%"),
     riskFreeTime: 7200,
     liquidityScale: ethers.parseUnits("1000000", "ether"),
     stableCoinSupplyCap: BigInt(10e8) * 10n ** 6n,
+    liquidityTradingFeeRate: parsePercent("0.05%"),
+    maxShortSizeRate: parsePercent("200%"),
 };
 
 const wbtcCfg = {
