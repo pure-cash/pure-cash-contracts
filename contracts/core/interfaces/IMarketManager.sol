@@ -65,6 +65,11 @@ interface IMarketManager is
     /// @param amount The increased protocol fee
     event ProtocolFeeIncreased(IERC20 indexed market, uint96 amount);
 
+    /// @notice Emitted when the protocol fee is increased by liquidity
+    /// @param market The target market contract address, such as the contract address of WETH
+    /// @param amount The increased protocol fee
+    event ProtocolFeeIncreasedByLiquidity(IERC20 indexed market, uint96 amount);
+
     /// @notice Emitted when the protocol fee is collected
     /// @param market The target market contract address, such as the contract address of WETH
     /// @param amount The collected protocol fee

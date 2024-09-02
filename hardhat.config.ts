@@ -37,7 +37,7 @@ const config: HardhatUserConfig = {
                     viaIR: true,
                     optimizer: {
                         enabled: true,
-                        runs: 900,
+                        runs: 400,
                     },
                     metadata: {
                         useLiteralContent: false,

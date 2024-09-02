@@ -139,6 +139,7 @@ library LiquidityReader {
 
         burnLPTReceiveAmount = LiquidityUtil.burnLPT(
             state,
+            marketConfig,
             LiquidityUtil.BurnParam({
                 market: IERC20(address(this)), // for mock
                 account: address(this),
