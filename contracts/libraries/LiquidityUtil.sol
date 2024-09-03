@@ -78,7 +78,7 @@ library LiquidityUtil {
             }
 
             _state.protocolFee += protocolFee; // overflow is desired
-            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
+            emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(_param.market, protocolFee);
 
             packedState.lpLiquidity = uint128(liquidityAfter);
 
@@ -142,7 +142,7 @@ library LiquidityUtil {
                 : _cfg.protocolFeeRate;
             uint96 protocolFee = uint96((tradingFee * protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR);
             _state.protocolFee += protocolFee; // overflow is desired
-            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
+            emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(_param.market, protocolFee);
 
             uint96 liquidityFee = uint96(tradingFee - protocolFee);
             // netSize <= liquidityBefore - liquidityWithFee + liquidityFee

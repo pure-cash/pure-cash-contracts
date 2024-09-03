@@ -6,11 +6,11 @@ exports[`MarketManager #executeOrCancelBurnLPT burn half 1`] = `167872`;
 
 exports[`MarketManager #executeOrCancelBurnPUSD burn all 1`] = `186917`;
 
-exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `186917`;
+exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `186908`;
 
 exports[`MarketManager #executeOrCancelDecreasePosition decrease all 1`] = `184941`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `209776`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `209764`;
 
 exports[`MarketManager #executeOrCancelDecreasePosition decrease half 1`] = `191339`;
 

@@ -134,7 +134,7 @@ contract LiquidityUtilTest is BaseTest {
             Math.Rounding.Down
         );
         vm.expectEmit();
-        emit IMarketManager.ProtocolFeeIncreasedByLiquidity(param.market, uint96(protocolFee));
+        emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(param.market, uint96(protocolFee));
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(param.market, 0);
         vm.expectEmit();
@@ -185,7 +185,7 @@ contract LiquidityUtilTest is BaseTest {
             Math.mulDiv(param.liquidity - tradingFee, totalSupplyBefore, lpLiquidityBefore + liquidityFee)
         );
         vm.expectEmit();
-        emit IMarketManager.ProtocolFeeIncreasedByLiquidity(param.market, uint96(protocolFee));
+        emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(param.market, uint96(protocolFee));
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(param.market, liquidityFee);
         vm.expectEmit();
@@ -236,7 +236,7 @@ contract LiquidityUtilTest is BaseTest {
         uint256 protocolFee = tradingFee - liquidityFee;
         uint64 want = uint64(Math.mulDiv(actualLiquidity, totalSupplyBefore, lpLiquidityBefore + liquidityFee));
         vm.expectEmit();
-        emit IMarketManager.ProtocolFeeIncreasedByLiquidity(param.market, uint96(protocolFee));
+        emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(param.market, uint96(protocolFee));
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(param.market, uint96(liquidityFee));
         vm.expectEmit();
@@ -400,7 +400,7 @@ contract LiquidityUtilTest is BaseTest {
         );
         uint256 protocolFee = (tradingFee * cfgWithFee.protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR;
         vm.expectEmit();
-        emit IMarketManager.ProtocolFeeIncreasedByLiquidity(param.market, uint96(protocolFee));
+        emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(param.market, uint96(protocolFee));
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(param.market, uint96(tradingFee - protocolFee));
         vm.expectEmit();
@@ -440,7 +440,7 @@ contract LiquidityUtilTest is BaseTest {
         );
         uint256 protocolFee = tradingFee;
         vm.expectEmit();
-        emit IMarketManager.ProtocolFeeIncreasedByLiquidity(param.market, uint96(protocolFee));
+        emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(param.market, uint96(protocolFee));
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(param.market, 0);
         vm.expectEmit();

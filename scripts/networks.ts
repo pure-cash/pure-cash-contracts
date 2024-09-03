@@ -56,18 +56,18 @@ const defaultMaxCumulativeDeltaDiff = 100n * 1000n; // 10%
 
 const defaultExecutionGasLimit = {
     positionRouter: {
-        [EstimatedGasLimitType.IncreasePosition]: 195000,
-        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 260000,
+        [EstimatedGasLimitType.IncreasePosition]: 197500,
+        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 262500,
         [EstimatedGasLimitType.DecreasePosition]: 210000,
         [EstimatedGasLimitType.DecreasePositionReceivePUSD]: 280000,
-        [EstimatedGasLimitType.MintPUSD]: 240000,
-        [EstimatedGasLimitType.BurnPUSD]: 240000,
+        [EstimatedGasLimitType.MintPUSD]: 240200,
+        [EstimatedGasLimitType.BurnPUSD]: 240200,
     },
     positionRouter2: {
-        [EstimatedGasLimitType.MintLPT]: 190000,
-        [EstimatedGasLimitType.MintLPTPayPUSD]: 250000,
-        [EstimatedGasLimitType.BurnLPT]: 190000,
-        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 280000,
+        [EstimatedGasLimitType.MintLPT]: 198000,
+        [EstimatedGasLimitType.MintLPTPayPUSD]: 258000,
+        [EstimatedGasLimitType.BurnLPT]: 196500,
+        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 286500,
     },
     balanceRateBalancer: {
         [EstimatedGasLimitType.IncreaseBalanceRate]: 400000,
