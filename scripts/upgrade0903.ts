@@ -14,7 +14,7 @@ export async function upgrade0903(chainId: bigint) {
     // 1. deploy libraries
     const {configurableUtil, liquidityUtil, positionReader, liquidityReader} = await deployLibraries(
         document.deployments.PUSDManagerUtil,
-        document.deployments.PositionUtil
+        document.deployments.PositionUtil,
     );
     document.deployments.ConfigurableUtil = await configurableUtil.getAddress();
     document.deployments.LiquidityUtil = await liquidityUtil.getAddress();
@@ -52,7 +52,7 @@ export async function upgrade0903(chainId: bigint) {
 
     const purecashTimeLockController = await ethers.getContractAt(
         "PurecashTimelockController",
-        document.deployments.PurecashTimelockController
+        document.deployments.PurecashTimelockController,
     );
     let targets = [];
     let values = [];
@@ -62,14 +62,14 @@ export async function upgrade0903(chainId: bigint) {
     // 5. upgrade market manager
     const marketManager = await ethers.getContractAt(
         "MarketManagerUpgradeable",
-        document.deployments.MarketManagerUpgradeable
+        document.deployments.MarketManagerUpgradeable,
     );
     targets.push(document.deployments.MarketManagerUpgradeable);
     calldatas.push(
         marketManager.interface.encodeFunctionData("upgradeToAndCall", [
             await marketManagerUpgradeableImpl.getAddress(),
             "0x",
-        ])
+        ]),
     );
     values.push(0);
 
@@ -89,7 +89,7 @@ export async function upgrade0903(chainId: bigint) {
                 positionRouterKey,
                 // @ts-ignore
                 network.estimatedGasLimits.positionRouter[positionRouterKey],
-            ])
+            ]),
         );
         targets.push(await positionRouter.getAddress());
         values.push(0);
@@ -101,7 +101,7 @@ export async function upgrade0903(chainId: bigint) {
                 positionRouter2Key,
                 // @ts-ignore
                 network.estimatedGasLimits.positionRouter2[positionRouter2Key],
-            ])
+            ]),
         );
         targets.push(await positionRouter2.getAddress());
         values.push(0);
