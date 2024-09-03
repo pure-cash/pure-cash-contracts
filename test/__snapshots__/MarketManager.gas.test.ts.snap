@@ -1,59 +1,59 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`MarketManager #executeOrCancelBurnLPT burn all 1`] = `161400`;
+exports[`MarketManager #executeOrCancelBurnLPT burn all 1`] = `166179`;
 
-exports[`MarketManager #executeOrCancelBurnLPT burn half 1`] = `161400`;
+exports[`MarketManager #executeOrCancelBurnLPT burn half 1`] = `167872`;
 
-exports[`MarketManager #executeOrCancelBurnPUSD burn all 1`] = `186983`;
+exports[`MarketManager #executeOrCancelBurnPUSD burn all 1`] = `186917`;
 
-exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `186983`;
+exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `186908`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease all 1`] = `185039`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease all 1`] = `184941`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `209874`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `209764`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease half 1`] = `191437`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease half 1`] = `191339`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease half with liquidity buffer module burn 1`] = `216261`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease half with liquidity buffer module burn 1`] = `216163`;
 
-exports[`MarketManager #executeOrCancelIncreasePosition different user first increase 1`] = `160379`;
+exports[`MarketManager #executeOrCancelIncreasePosition different user first increase 1`] = `162303`;
 
-exports[`MarketManager #executeOrCancelIncreasePosition first increase 1`] = `194079`;
+exports[`MarketManager #executeOrCancelIncreasePosition first increase 1`] = `196003`;
 
-exports[`MarketManager #executeOrCancelIncreasePosition same user increase again 1`] = `143247`;
+exports[`MarketManager #executeOrCancelIncreasePosition same user increase again 1`] = `145186`;
 
-exports[`MarketManager #executeOrCancelIncreasePosition same user increase again with floating trading fee 1`] = `143448`;
+exports[`MarketManager #executeOrCancelIncreasePosition same user increase again with floating trading fee 1`] = `145186`;
 
-exports[`MarketManager #executeOrCancelIncreasePosition same user increase again with spread 1`] = `167132`;
+exports[`MarketManager #executeOrCancelIncreasePosition same user increase again with spread 1`] = `169071`;
 
-exports[`MarketManager #executeOrCancelMintLPT different user first mint 1`] = `149383`;
+exports[`MarketManager #executeOrCancelMintLPT different user first mint 1`] = `157342`;
 
-exports[`MarketManager #executeOrCancelMintLPT first mint 1`] = `217375`;
+exports[`MarketManager #executeOrCancelMintLPT first mint 1`] = `223199`;
 
-exports[`MarketManager #executeOrCancelMintLPT same user mint again 1`] = `132283`;
+exports[`MarketManager #executeOrCancelMintLPT same user mint again 1`] = `140242`;
 
-exports[`MarketManager #executeOrCancelMintPUSD different user first mint 1`] = `204174`;
+exports[`MarketManager #executeOrCancelMintPUSD different user first mint 1`] = `204227`;
 
-exports[`MarketManager #executeOrCancelMintPUSD first mint 1`] = `255326`;
+exports[`MarketManager #executeOrCancelMintPUSD first mint 1`] = `255379`;
 
-exports[`MarketManager #executeOrCancelMintPUSD same user mint again 1`] = `187074`;
+exports[`MarketManager #executeOrCancelMintPUSD same user mint again 1`] = `187127`;
 
-exports[`MarketManager #liquidatePosition liquidate 1`] = `155893`;
+exports[`MarketManager #liquidatePosition liquidate 1`] = `155817`;
 
-exports[`MarketManager #liquidatePosition liquidate with liquidity buffer module 1`] = `180554`;
+exports[`MarketManager #liquidatePosition liquidate with liquidity buffer module 1`] = `180478`;
 
-exports[`MarketManager #psmBurnPUSD burn 1`] = `77943`;
+exports[`MarketManager #psmBurnPUSD burn 1`] = `77949`;
 
-exports[`MarketManager #psmMintPUSD mint 1`] = `96237`;
+exports[`MarketManager #psmMintPUSD mint 1`] = `96221`;
 
-exports[`MarketManager #updatePrice first and second price updates(refPriceFeed not set) 1`] = `48640`;
+exports[`MarketManager #updatePrice first and second price updates(refPriceFeed not set) 1`] = `48596`;
 
-exports[`MarketManager #updatePrice first and second price updates(refPriceFeed not set) 2`] = `48640`;
+exports[`MarketManager #updatePrice first and second price updates(refPriceFeed not set) 2`] = `48596`;
 
-exports[`MarketManager #updatePrice first and second price updates(refPriceFeed set) 1`] = `89727`;
+exports[`MarketManager #updatePrice first and second price updates(refPriceFeed set) 1`] = `89689`;
 
-exports[`MarketManager #updatePrice first and second price updates(refPriceFeed set) 2`] = `73381`;
+exports[`MarketManager #updatePrice first and second price updates(refPriceFeed set) 2`] = `73343`;
 
-exports[`MarketManager #updatePrice price updates if reach MaxDeltaDiff 1`] = `75540`;
+exports[`MarketManager #updatePrice price updates if reach MaxDeltaDiff 1`] = `75502`;
 
-exports[`MarketManager #updatePrice price updates if reach MaxDeviationRatio 1`] = `89831`;
+exports[`MarketManager #updatePrice price updates if reach MaxDeviationRatio 1`] = `89793`;

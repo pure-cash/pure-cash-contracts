@@ -91,20 +91,20 @@ contract PositionUtilTest is BaseTest {
     function test_increasePosition_revertIf_sizeExceedsMaxSizePerPosition() public {
         state.packedState.lpEntryPrice = price;
         state.packedState.lpNetSize = 0;
-        state.packedState.lpLiquidity = 399 * 1e18;
+        state.packedState.lpLiquidity = cfg.liquidityCap;
         cfg.maxSizeRatePerPosition = 0.5 * 1e7; // 0.5
 
         PositionUtil.IncreasePositionParam memory param = PositionUtil.IncreasePositionParam({
             market: market,
             account: account,
-            marginDelta: 100 * 1e18,
-            sizeDelta: 200 * 1e18,
+            marginDelta: 500000e18 + 1,
+            sizeDelta: 500000e18 + 1,
             minIndexPrice: price,
             maxIndexPrice: price
         });
 
         vm.expectRevert(
-            abi.encodeWithSelector(IMarketErrors.SizeExceedsMaxSizePerPosition.selector, 200 * 1e18, 199.5 * 1e18)
+            abi.encodeWithSelector(IMarketErrors.SizeExceedsMaxSizePerPosition.selector, 500000e18 + 1, 500000e18)
         );
         PositionUtil.increasePosition(state, cfg, param);
     }

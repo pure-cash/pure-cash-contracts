@@ -60,10 +60,15 @@ interface IMarketManager is
         uint256 globalStabilityFund;
     }
 
-    /// @notice Emitted when the protocol fee is increased
+    /// @notice Emitted when the protocol fee is increased by trading fee
     /// @param market The target market contract address, such as the contract address of WETH
     /// @param amount The increased protocol fee
     event ProtocolFeeIncreased(IERC20 indexed market, uint96 amount);
+
+    /// @notice Emitted when the protocol fee is increased by LP trading fee
+    /// @param market The target market contract address, such as the contract address of WETH
+    /// @param amount The increased protocol fee
+    event ProtocolFeeIncreasedByLPTradingFee(IERC20 indexed market, uint96 amount);
 
     /// @notice Emitted when the protocol fee is collected
     /// @param market The target market contract address, such as the contract address of WETH

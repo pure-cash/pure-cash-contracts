@@ -16,7 +16,7 @@ interface IConfigurable {
         /// then the trading fee rate will be changed to the floating fee rate,
         /// denominated in thousandths of a bip (i.e. 1e-7)
         uint24 openPositionThreshold;
-        /// @notice The trading fee rate for taker increase or decrease positions,
+        /// @notice The trading fee rate for increase or decrease positions,
         /// denominated in thousandths of a bip (i.e. 1e-7)
         uint24 tradingFeeRate;
         /// @notice The maximum leverage for per trader position, for example, 100 means the maximum leverage
@@ -46,10 +46,14 @@ interface IConfigurable {
         uint64 liquidationExecutionFee;
         /// @notice Whether the liquidity buffer module is enabled when decreasing position
         bool liquidityBufferModuleEnabled;
+        /// @notice The trading fee rate for liquidity, denominated in thousandths of a bip (i.e. 1e-7)
+        uint24 liquidityTradingFeeRate;
         /// @notice If the total supply of the stable coin reach stableCoinSupplyCap, the minting is disabled.
         uint64 stableCoinSupplyCap;
         /// @notice The capacity of the liquidity
         uint120 liquidityCap;
+        /// @notice The maximum short position size rate, denominated in thousandths of a bip (i.e. 1e-7)
+        uint32 maxShortSizeRate;
     }
 
     /// @notice Emitted when the market is enabled
@@ -94,6 +98,8 @@ interface IConfigurable {
     error InvalidStableCoinSupplyCap(uint256 stablecoinSupplyCap);
     /// @notice Invalid decimals
     error InvalidDecimals(uint8 decimals);
+    /// @notice Invalid liquidity trading fee rate
+    error InvalidLiquidityTradingFeeRate(uint24 liquidityTradingFeeRate);
 
     /// @notice Checks if a market is enabled
     /// @param market The target market contract address, such as the contract address of WETH

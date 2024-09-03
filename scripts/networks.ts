@@ -7,7 +7,7 @@ const defaultCfg = {
     minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
     maxLeveragePerPosition: 10n,
     liquidationFeeRatePerPosition: parsePercent("2.5%"),
-    maxSizeRatePerPosition: parsePercent("100%"),
+    maxSizeRatePerPosition: parsePercent("0.1%"),
     liquidationExecutionFee: ethers.parseUnits("0.00032", "ether"),
     liquidityCap: ethers.parseUnits("200000", "ether"),
     liquidityBufferModuleEnabled: true,
@@ -16,11 +16,13 @@ const defaultCfg = {
     protocolFeeRate: parsePercent("50%"),
     openPositionThreshold: parsePercent("90%"),
     maxFeeRate: parsePercent("2%"),
-    minMintingRate: parsePercent("50%"),
+    minMintingRate: parsePercent("70%"),
     maxBurningRate: parsePercent("95%"),
     riskFreeTime: 7200,
     liquidityScale: ethers.parseUnits("1000000", "ether"),
     stableCoinSupplyCap: BigInt(10e8) * 10n ** 6n,
+    liquidityTradingFeeRate: parsePercent("0.05%"),
+    maxShortSizeRate: parsePercent("200%"),
 };
 
 const wbtcCfg = {
@@ -54,18 +56,18 @@ const defaultMaxCumulativeDeltaDiff = 100n * 1000n; // 10%
 
 const defaultExecutionGasLimit = {
     positionRouter: {
-        [EstimatedGasLimitType.IncreasePosition]: 195000,
-        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 260000,
+        [EstimatedGasLimitType.IncreasePosition]: 197500,
+        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 262500,
         [EstimatedGasLimitType.DecreasePosition]: 210000,
         [EstimatedGasLimitType.DecreasePositionReceivePUSD]: 280000,
-        [EstimatedGasLimitType.MintPUSD]: 240000,
-        [EstimatedGasLimitType.BurnPUSD]: 240000,
+        [EstimatedGasLimitType.MintPUSD]: 240200,
+        [EstimatedGasLimitType.BurnPUSD]: 240200,
     },
     positionRouter2: {
-        [EstimatedGasLimitType.MintLPT]: 190000,
-        [EstimatedGasLimitType.MintLPTPayPUSD]: 250000,
-        [EstimatedGasLimitType.BurnLPT]: 190000,
-        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 280000,
+        [EstimatedGasLimitType.MintLPT]: 198000,
+        [EstimatedGasLimitType.MintLPTPayPUSD]: 258000,
+        [EstimatedGasLimitType.BurnLPT]: 196500,
+        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 286500,
     },
     balanceRateBalancer: {
         [EstimatedGasLimitType.IncreaseBalanceRate]: 400000,

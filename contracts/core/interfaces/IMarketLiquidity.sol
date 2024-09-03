@@ -10,6 +10,11 @@ interface IMarketLiquidity {
     /// @param liquidityFee The increased liquidity fee
     event GlobalLiquidityIncreasedByTradingFee(IERC20 indexed market, uint96 liquidityFee);
 
+    /// @notice Emitted when the global liquidity is increased by LP trading fee
+    /// @param market The target market contract address, such as the contract address of WETH
+    /// @param liquidityFee The increased liquidity fee
+    event GlobalLiquidityIncreasedByLPTradingFee(IERC20 indexed market, uint96 liquidityFee);
+
     /// @notice Emitted when the global liquidity is settled
     /// @param market The target market contract address, such as the contract address of WETH
     /// @param sizeDelta The change in the global liquidity
@@ -28,12 +33,14 @@ interface IMarketLiquidity {
     /// @param receiver The address to receive the minted LP Token
     /// @param liquidity The liquidity provided by the LP
     /// @param tokenValue The LP Token to be minted
+    /// @param tradingFee The trading fee of the LP
     event LPTMinted(
         IERC20 indexed market,
         address indexed account,
         address indexed receiver,
         uint96 liquidity,
-        uint64 tokenValue
+        uint64 tokenValue,
+        uint96 tradingFee
     );
 
     /// @notice Emitted when the LP Token is burned
@@ -42,12 +49,14 @@ interface IMarketLiquidity {
     /// @param receiver The address to receive the margin
     /// @param liquidity The liquidity to be returned to the LP
     /// @param tokenValue The LP Token to be burned
+    /// @param tradingFee The trading fee of the LP
     event LPTBurned(
         IERC20 indexed market,
         address indexed account,
         address indexed receiver,
         uint96 liquidity,
-        uint64 tokenValue
+        uint64 tokenValue,
+        uint96 tradingFee
     );
 
     /// @notice Mint the LP Token

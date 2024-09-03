@@ -76,5 +76,8 @@ library ConfigurableUtil {
 
         if (_newCfg.stableCoinSupplyCap == 0)
             revert IConfigurable.InvalidStableCoinSupplyCap(_newCfg.stableCoinSupplyCap);
+
+        if (_newCfg.liquidityTradingFeeRate > Constants.BASIS_POINTS_DIVISOR)
+            revert IConfigurable.InvalidLiquidityTradingFeeRate(_newCfg.liquidityTradingFeeRate);
     }
 }

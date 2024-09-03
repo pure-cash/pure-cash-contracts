@@ -29,7 +29,7 @@ describe("MarketManager", () => {
         minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
         maxLeveragePerPosition: 10,
         liquidationFeeRatePerPosition: parsePercent("8%"),
-        maxSizeRatePerPosition: parsePercent("100%"),
+        maxSizeRatePerPosition: parsePercent("99%"),
         openPositionThreshold: parsePercent("90%"),
         liquidationExecutionFee: ethers.parseUnits("0.0005", "ether"),
         tradingFeeRate: parsePercent("0.07%"),
@@ -43,6 +43,8 @@ describe("MarketManager", () => {
         liquidityScale: BigInt(100e4) * BigInt(1e18),
         stableCoinSupplyCap: BigInt(10e8) * BigInt(1e6),
         maxBurningRate: parsePercent("95%"),
+        liquidityTradingFeeRate: parsePercent("0.5%"),
+        maxShortSizeRate: parsePercent("200%"),
     };
 
     async function deployFixture() {
@@ -711,7 +713,7 @@ describe("MarketManager", () => {
                 await loadFixture(deployFixture);
 
             await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
-                value: ethers.parseEther("10") + DEFAULT_EXECUTION_FEE,
+                value: ethers.parseEther("15") + DEFAULT_EXECUTION_FEE,
                 gasPrice: GAS_PRICE,
             });
             await expect(
@@ -723,7 +725,7 @@ describe("MarketManager", () => {
                         {
                             account: alice.address,
                             market: weth.target,
-                            liquidityDelta: ethers.parseEther("10"),
+                            liquidityDelta: ethers.parseEther("15"),
                             executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,
@@ -794,7 +796,7 @@ describe("MarketManager", () => {
                 await loadFixture(deployFixture);
 
             await positionRouter2.connect(alice).createMintLPTETH(alice.address, DEFAULT_EXECUTION_FEE, {
-                value: ethers.parseEther("100") + DEFAULT_EXECUTION_FEE,
+                value: ethers.parseEther("200") + DEFAULT_EXECUTION_FEE,
                 gasPrice: GAS_PRICE,
             });
             await positionRouter
@@ -813,7 +815,7 @@ describe("MarketManager", () => {
                         {
                             account: alice.address,
                             market: weth.target,
-                            liquidityDelta: ethers.parseEther("100"),
+                            liquidityDelta: ethers.parseEther("200"),
                             executionFee: DEFAULT_EXECUTION_FEE,
                             receiver: alice.address,
                             payPUSD: false,

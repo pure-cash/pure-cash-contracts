@@ -438,13 +438,13 @@ library PositionUtil {
 
         uint96 liquidityFee;
         unchecked {
-            uint96 _protocolFee = uint96(
+            uint96 protocolFee = uint96(
                 (uint256(tradingFee) * _param.protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR
             );
-            _state.protocolFee += _protocolFee; // overflow is desired
-            emit IMarketManager.ProtocolFeeIncreased(_param.market, _protocolFee);
+            _state.protocolFee += protocolFee; // overflow is desired
+            emit IMarketManager.ProtocolFeeIncreased(_param.market, protocolFee);
 
-            liquidityFee = tradingFee - _protocolFee;
+            liquidityFee = tradingFee - protocolFee;
         }
 
         _state.packedState.lpLiquidity += liquidityFee;
@@ -646,7 +646,7 @@ library PositionUtil {
             lpNetSizeAfter = uint128(lpNetSizeAfter_);
 
             sizeAfter = (uint256(_sizeBefore) + _sizeDelta).toUint96();
-            uint256 maxSizePerPosition = (uint256(lpLiquidity) * _cfg.maxSizeRatePerPosition) /
+            uint256 maxSizePerPosition = (uint256(_cfg.liquidityCap) * _cfg.maxSizeRatePerPosition) /
                 Constants.BASIS_POINTS_DIVISOR;
             if (sizeAfter > maxSizePerPosition)
                 revert IMarketErrors.SizeExceedsMaxSizePerPosition(sizeAfter, maxSizePerPosition);
