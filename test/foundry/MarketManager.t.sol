@@ -85,7 +85,7 @@ contract MarketManagerTest is BaseTest {
 
     function test_mintLPT_passIf_liquidityIsZero() public {
         vm.expectEmit();
-        emit IMarketLiquidity.LPTMinted(weth, ALICE, ALICE, 0, 0);
+        emit IMarketLiquidity.LPTMinted(weth, ALICE, ALICE, 0, 0, 0);
         marketManager.mintLPT(weth, ALICE, ALICE);
     }
 
@@ -110,7 +110,7 @@ contract MarketManagerTest is BaseTest {
     function test_mintLPT_passIf_totalSupplyIsZero() public {
         dealMarketManager(weth, 100e18);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTMinted(weth, ALICE, ALICE, 100e18, 298990965670);
+        emit IMarketLiquidity.LPTMinted(weth, ALICE, ALICE, 100e18, 298990965670, 0);
         marketManager.mintLPT(weth, ALICE, ALICE);
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
@@ -129,7 +129,7 @@ contract MarketManagerTest is BaseTest {
         marketManager.updatePrice(encodePrice(weth, PRICE << 1, uint32(block.timestamp + 1)));
         dealMarketManager(weth, 11e18);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTMinted(weth, ALICE, BOB, 11e18, 32889006223);
+        emit IMarketLiquidity.LPTMinted(weth, ALICE, BOB, 11e18, 32889006223, 0);
         marketManager.mintLPT(weth, ALICE, BOB);
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
@@ -151,7 +151,7 @@ contract MarketManagerTest is BaseTest {
         marketManager.updatePrice(encodePrice(weth, PRICE << 1, uint32(block.timestamp)));
         dealMarketManager(weth, 100e18);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTMinted(weth, BOB, BOB, 100e18, 314715737493);
+        emit IMarketLiquidity.LPTMinted(weth, BOB, BOB, 100e18, 314715737493, 0);
         marketManager.mintLPT(weth, BOB, BOB);
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
@@ -174,7 +174,7 @@ contract MarketManagerTest is BaseTest {
         marketManager.updatePrice(encodePrice(weth, PRICE >> 1, uint32(block.timestamp)));
         dealMarketManager(weth, 100e18);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTMinted(weth, BOB, BOB, 100e18, 271801320567);
+        emit IMarketLiquidity.LPTMinted(weth, BOB, BOB, 100e18, 271801320567, 0);
         marketManager.mintLPT(weth, BOB, BOB);
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
@@ -222,7 +222,7 @@ contract MarketManagerTest is BaseTest {
                 .mulDiv(_liquidity, lpToken.totalSupply(), (pnl + int256(uint256(packedState.lpLiquidity))).toUint256())
                 .toUint64();
             vm.expectEmit();
-            emit IMarketLiquidity.LPTMinted(weth, _account, _receiver, _liquidity, tokenValue);
+            emit IMarketLiquidity.LPTMinted(weth, _account, _receiver, _liquidity, tokenValue, 0);
         }
         marketManager.mintLPT(weth, _account, _receiver);
     }
@@ -243,7 +243,7 @@ contract MarketManagerTest is BaseTest {
         marketManager.mintLPT(weth, ALICE, ALICE);
 
         vm.expectEmit();
-        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 0, 0);
+        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 0, 0, 0);
         marketManager.burnLPT(weth, ALICE, ALICE);
     }
 
@@ -254,7 +254,7 @@ contract MarketManagerTest is BaseTest {
         vm.prank(BOB);
         lpToken.transfer(address(marketManager), 298990965670);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTBurned(weth, BOB, ALICE, 100e18, 298990965670);
+        emit IMarketLiquidity.LPTBurned(weth, BOB, ALICE, 100e18, 298990965670, 0);
         marketManager.burnLPT(weth, BOB, ALICE);
 
         IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
@@ -303,7 +303,7 @@ contract MarketManagerTest is BaseTest {
         vm.prank(ALICE);
         lpToken.transfer(address(marketManager), 2989 * 1e6);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 949745959258903382, 2989 * 1e6);
+        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 949745959258903382, 2989 * 1e6, 0);
         marketManager.burnLPT(weth, ALICE, ALICE);
 
         IMarketManager.PackedState memory packedStateAfter = marketManager.packedStates(weth);
@@ -324,7 +324,7 @@ contract MarketManagerTest is BaseTest {
         vm.prank(ALICE);
         lpToken.transfer(address(marketManager), 2989 * 1e6);
         vm.expectEmit();
-        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 1099700322928496461, 2989 * 1e6);
+        emit IMarketLiquidity.LPTBurned(weth, ALICE, ALICE, 1099700322928496461, 2989 * 1e6, 0);
         marketManager.burnLPT(weth, ALICE, ALICE);
 
         IMarketManager.PackedState memory packedStateAfter = marketManager.packedStates(weth);

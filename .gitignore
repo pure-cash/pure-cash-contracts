@@ -21,6 +21,6 @@ out
 foundry-out
 forge-cache
 
-ForkTest.t.sol
+ForkTest*
 
 deployments

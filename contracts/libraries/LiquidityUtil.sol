@@ -68,11 +68,17 @@ library LiquidityUtil {
                 revert IMarketErrors.LiquidityCapExceeded(liquidityBefore, _param.liquidity, _cfg.liquidityCap);
 
             // If the cap is exceeded due to the trading fee, the excess part is added to the protocol fee
-            if (liquidityAfter + liquidityFee > _cfg.liquidityCap) {
-                protocolFee += uint96(_cfg.liquidityCap - liquidityAfter);
-                liquidityFee = uint96(tradingFee - protocolFee);
+            uint256 liquidityAfterWithFee = liquidityAfter + liquidityFee;
+            if (liquidityAfterWithFee > _cfg.liquidityCap) {
+                liquidityFee = uint96(_cfg.liquidityCap - liquidityAfter);
+                protocolFee = uint96(tradingFee - liquidityFee);
                 liquidityAfter = _cfg.liquidityCap;
+            } else {
+                liquidityAfter = liquidityAfterWithFee;
             }
+
+            _state.protocolFee += protocolFee; // overflow is desired
+            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
 
             packedState.lpLiquidity = uint128(liquidityAfter);
 
@@ -100,7 +106,6 @@ library LiquidityUtil {
             // mint LPT
             token.mint(_param.receiver, tokenValue);
 
-            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
             emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(_param.market, liquidityFee);
             emit IMarketLiquidity.LPTMinted(
                 _param.market,
@@ -123,29 +128,33 @@ library LiquidityUtil {
         int256 pnl = PositionUtil.calcUnrealizedPnL(SHORT, netSize, packedState.lpEntryPrice, _param.indexPrice);
         ILPToken token = ILPToken(computeLPTokenAddress(_param.market));
         unchecked {
-            liquidity = Math
-                .mulDiv((pnl + int256(uint256(liquidityBefore))).toUint256(), _param.tokenValue, token.totalSupply())
+            uint256 totalSupplyBefore = token.totalSupply();
+            uint96 liquidityWithFee = Math
+                .mulDiv((pnl + int256(uint256(liquidityBefore))).toUint256(), _param.tokenValue, totalSupplyBefore)
                 .toUint96();
-            uint128 liquidityAfter = liquidityBefore - liquidity;
             uint256 tradingFee = Math.ceilDiv(
-                uint256(liquidity) * _cfg.liquidityTradingFeeRate,
+                uint256(liquidityWithFee) * _cfg.liquidityTradingFeeRate,
                 Constants.BASIS_POINTS_DIVISOR
             );
-            liquidity -= uint96(tradingFee);
 
-            uint24 protocolFeeRate = liquidityAfter == 0 ? Constants.BASIS_POINTS_DIVISOR : _cfg.protocolFeeRate;
+            uint24 protocolFeeRate = totalSupplyBefore == _param.tokenValue
+                ? Constants.BASIS_POINTS_DIVISOR
+                : _cfg.protocolFeeRate;
             uint96 protocolFee = uint96((tradingFee * protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR);
             _state.protocolFee += protocolFee; // overflow is desired
+            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
 
             uint96 liquidityFee = uint96(tradingFee - protocolFee);
-            liquidityAfter += liquidityFee;
-            if (netSize > liquidityAfter) revert IMarketErrors.BalanceRateCapExceeded();
+            // netSize <= liquidityBefore - liquidityWithFee + liquidityFee
+            if (uint256(netSize) + liquidityWithFee > uint256(liquidityBefore) + liquidityFee)
+                revert IMarketErrors.BalanceRateCapExceeded();
+            uint128 liquidityAfter = liquidityBefore + liquidityFee - liquidityWithFee;
             packedState.lpLiquidity = liquidityAfter;
+            liquidity = liquidityWithFee - uint96(tradingFee);
 
             // burn LPT
             token.burn(_param.tokenValue);
 
-            emit IMarketManager.ProtocolFeeIncreasedByLiquidity(_param.market, protocolFee);
             emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(_param.market, liquidityFee);
             emit IMarketLiquidity.LPTBurned(
                 _param.market,
