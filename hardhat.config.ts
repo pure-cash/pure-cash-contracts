@@ -66,11 +66,11 @@ const config: HardhatUserConfig = {
             accounts: accounts,
         },
         sepolia: {
-            url: `https://rpc.particle.network/evm-chain?chainId=11155111&projectUuid=${process.env.PARTICLE_PROJECT_ID}&projectKey=${process.env.PARTICLE_PROJECT_KEY}`,
+            url: `https://eth-sepolia.g.alchemy.com/v2/AvsUri7mewGei_wIUcOhFYEgVhjd1Ajd`,
             chainId: 11155111,
             accounts: accounts,
             ignition: {
-                maxFeePerGasLimit: ethers.parseUnits("20", "gwei"),
+                maxFeePerGasLimit: ethers.parseUnits("200", "gwei"),
                 // maxPriorityFeePerGas: ethers.parseUnits("2", "gwei"),
             },
         },
@@ -103,7 +103,7 @@ const config: HardhatUserConfig = {
             create2: {
                 // To learn more about salts, see the CreateX documentation
                 // https://github.com/pcaversaccio/createx?tab=readme-ov-file#security-considerations
-                salt: "0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E000000000000000000082602",
+                salt: "0xb7d9f711E00ca9bE83E3348C57b3719A18598d1E000000000000000000090402",
             },
         },
     },
