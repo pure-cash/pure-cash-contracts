@@ -59,6 +59,19 @@ interface IMarketLiquidity {
         uint96 tradingFee
     );
 
+    /// @notice Emitted when the global liquidity PnL is revised
+    /// @param market The target market contract address, such as the contract address of WETH
+    /// @param settledPrice The price when the PnL is settled
+    /// @param scaledUSDPnL The settled scaled USD PnL. For saving gas, this value is scaled up
+    /// by 10^(market decimals + price decimals - usd decimals)
+    /// @param revisedTokenPnL The revised token PnL
+    event GlobalLiquidityPnLRevised(
+        IERC20 indexed market,
+        uint64 settledPrice,
+        int256 scaledUSDPnL,
+        int256 revisedTokenPnL
+    );
+
     /// @notice Mint the LP Token
     /// @param market The target market contract address, such as the contract address of WETH
     /// @param account The address to mint the liquidity. The parameter is only used for emitting event

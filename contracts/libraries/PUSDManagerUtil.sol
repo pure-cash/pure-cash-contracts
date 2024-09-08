@@ -253,16 +253,17 @@ library PUSDManagerUtil {
         uint96 spread = SpreadUtil.calcSpreadAmount(spreadX96, sizeDelta, Math.Rounding.Down);
         PositionUtil.distributeSpread(_state, _param.market, spread);
 
-        int256 realizedPnL = PositionUtil.calcUnrealizedPnL(
+        (int256 tokenPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
             SHORT,
             sizeDelta,
             positionCache.entryPrice,
             _param.indexPrice
         );
+        LiquidityUtil.reviseLiquidityPnL(packedState, _param.market, _param.indexPrice, scaledUSDPnL);
 
         if (_param.exactIn) {
             unchecked {
-                int256 receiveAmountInt = int256(uint256(sizeDelta)) + realizedPnL;
+                int256 receiveAmountInt = int256(uint256(sizeDelta)) + tokenPnL;
                 receiveAmountInt -= int256(uint256(tradingFee) + spread);
                 if (receiveAmountInt < 0) revert IMarketErrors.NegativeReceiveAmount(receiveAmountInt);
                 receiveAmount = uint256(receiveAmountInt).toUint96();
@@ -305,7 +306,7 @@ library PUSDManagerUtil {
             _param.indexPrice,
             payAmount,
             receiveAmount,
-            realizedPnL,
+            tokenPnL,
             tradingFee,
             spread
         );

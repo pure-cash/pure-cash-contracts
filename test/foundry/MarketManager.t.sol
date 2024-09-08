@@ -122,6 +122,172 @@ contract MarketManagerTest is BaseTest {
         assertEq(token.balanceOf(ALICE), 298990965670);
     }
 
+    function test_tokenBalance_invariant() public {
+        cfg.tradingFeeRate = 0;
+        cfg.riskFreeTime = 1;
+        cfg.maxFeeRate = 0;
+        cfg.maxBurningRate = 1e7;
+        cfg.minMarginPerPosition = 1700000000000000;
+        cfg.liquidationExecutionFee = 1700000000000000 >> 1;
+        marketManager.updateMarketConfig(weth, cfg);
+
+        dealMarketManager(weth, 170000000000000000 << 2);
+        marketManager.mintLPT(weth, ALICE, ALICE);
+        print("mintLPT", true);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        dealMarketManager(weth, 59880999372869999);
+        marketManager.updatePrice(encodePrice(weth, 23981697964413, uint32(vm.getBlockTimestamp())));
+        marketManager.increasePosition(weth, ALICE, 170000000000000000);
+        print("increasePosition", true);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        dealMarketManager(weth, 170000000000000000 >> 1);
+        marketManager.updatePrice(encodePrice(weth, 24081697964413, uint32(vm.getBlockTimestamp())));
+        marketManager.increasePosition(weth, BOB, 170000000000000000);
+        print("increasePosition", true);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        dealMarketManager(weth, 1700000000000000);
+        marketManager.updatePrice(encodePrice(weth, 30001697964413, uint32(vm.getBlockTimestamp())));
+        marketManager.increasePosition(weth, CARRIE, 17000000000000000);
+        print("increasePosition", true);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        deal(address(weth), address(pusdManagerCallback), 29979009931571539);
+        marketManager.updatePrice(encodePrice(weth, 24032702958120, uint32(vm.getBlockTimestamp())));
+        marketManager.mintPUSD(
+            weth,
+            true,
+            29979009931571539,
+            IPUSDManagerCallback(address(pusdManagerCallback)),
+            abi.encode(IPositionRouterCommon.CallbackData({margin: 29979009931571539, account: ALICE})),
+            ALICE
+        );
+        print("mintPUSD", false);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        deal(address(weth), address(pusdManagerCallback), 39979009931571539);
+        marketManager.updatePrice(encodePrice(weth, 24232702958120, uint32(vm.getBlockTimestamp())));
+        marketManager.mintPUSD(
+            weth,
+            true,
+            39979009931571539,
+            IPUSDManagerCallback(address(pusdManagerCallback)),
+            abi.encode(IPositionRouterCommon.CallbackData({margin: 39979009931571539, account: CARRIE})),
+            CARRIE
+        );
+        print("mintPUSD", false);
+
+        uint256 pusdBalance = pusd.balanceOf(ALICE);
+        vm.prank(ALICE);
+        pusd.transfer(address(pusdManagerCallback), pusdBalance);
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 24027369016716, uint32(vm.getBlockTimestamp())));
+        marketManager.burnPUSD(
+            weth,
+            true,
+            uint96(pusdBalance),
+            IPUSDManagerCallback(address(pusdManagerCallback)),
+            abi.encode(IPositionRouterCommon.CallbackData({margin: uint96(pusdBalance), account: ALICE})),
+            ALICE
+        );
+        print("burnPUSD", false);
+
+        pusdBalance = pusd.balanceOf(CARRIE);
+        vm.prank(CARRIE);
+        pusd.transfer(address(pusdManagerCallback), pusdBalance);
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 24427369016716, uint32(vm.getBlockTimestamp())));
+        marketManager.burnPUSD(
+            weth,
+            true,
+            uint96(pusdBalance),
+            IPUSDManagerCallback(address(pusdManagerCallback)),
+            abi.encode(IPositionRouterCommon.CallbackData({margin: uint96(pusdBalance), account: CARRIE})),
+            CARRIE
+        );
+        print("burnPUSD", false);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 24008056999580, uint32(vm.getBlockTimestamp())));
+        marketManager.decreasePosition(weth, ALICE, 0, 170000000000000000, ALICE);
+        print("decreasePosition", false);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 24108056999580, uint32(vm.getBlockTimestamp())));
+        marketManager.decreasePosition(weth, BOB, 0, 170000000000000000, BOB);
+        print("decreasePosition", false);
+
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 10008056999580, uint32(vm.getBlockTimestamp())));
+        marketManager.liquidatePosition(weth, CARRIE, BOB);
+        print("liquidatePosition", false);
+
+        uint256 lptBalance = lpToken.balanceOf(ALICE);
+        vm.prank(ALICE);
+        lpToken.transfer(address(marketManager), lptBalance);
+        vm.warp(vm.getBlockTimestamp() + 2);
+        marketManager.updatePrice(encodePrice(weth, 24208056999580, uint32(vm.getBlockTimestamp())));
+        marketManager.burnLPT(weth, ALICE, ALICE);
+        print("burnLPT", true);
+    }
+
+    function print(string memory step, bool check) internal view {
+        IMarketManager.PackedState memory packedState = marketManager.packedStates(weth);
+        console.log("%d ==================== %d", 0, 0);
+        console.logString(step);
+        console.log(
+            "lpLiquidity: %d, lpNetSize: %d, lpEntryPrice: %d",
+            packedState.lpLiquidity,
+            packedState.lpNetSize,
+            packedState.lpEntryPrice
+        );
+        console.logString("acc:");
+        console.logInt(packedState.accumulateScaledUSDPnL);
+        console.log("previousSettledPrice: %d", packedState.previousSettledPrice);
+        IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(weth);
+        console.log("shortSize: %d, shortEntryPrice: %d", pusdPosition.size, pusdPosition.entryPrice);
+        IMarketPosition.Position memory alicePosition = marketManager.longPositions(weth, ALICE);
+        IMarketPosition.Position memory bobPosition = marketManager.longPositions(weth, BOB);
+        IMarketPosition.Position memory carriePosition = marketManager.longPositions(weth, CARRIE);
+        console.log(
+            "aliceLongSize: %d, aliceLongMargin: %d, aliceLongEntryPrice: %d",
+            alicePosition.size,
+            alicePosition.margin,
+            alicePosition.entryPrice
+        );
+        console.log(
+            "bobLongSize: %d, bobLongMargin: %d, bobLongEntryPrice: %d",
+            bobPosition.size,
+            bobPosition.margin,
+            bobPosition.entryPrice
+        );
+        console.log(
+            "carrieLongSize: %d, carrieLongMargin: %d, carrieLongEntryPrice: %d",
+            carriePosition.size,
+            carriePosition.margin,
+            carriePosition.entryPrice
+        );
+        uint128 tokenBalance = marketManager.tokenBalances(weth);
+        console.log("tokenBalance: %d", tokenBalance);
+        uint128 protocolFee = marketManager.protocolFees(weth);
+        uint256 globalStabilityFund = marketManager.globalStabilityFunds(weth);
+        console.log("protocolFee: %d, globalStabilityFund %d", protocolFee, globalStabilityFund);
+        if (check) {
+            assertTrue(
+                uint256(packedState.lpLiquidity) +
+                    pusdPosition.size +
+                    alicePosition.margin +
+                    bobPosition.margin +
+                    carriePosition.margin +
+                    protocolFee +
+                    globalStabilityFund <=
+                    tokenBalance
+            );
+        }
+    }
+
     function test_mintLPT_passIf_totalSupplyIsGtZeroAndPriceIsChanged() public {
         dealMarketManager(weth, 100e18);
         marketManager.mintLPT(weth, ALICE, ALICE);
