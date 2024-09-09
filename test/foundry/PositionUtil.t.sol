@@ -1559,6 +1559,36 @@ contract PositionUtilTest is BaseTest {
         }
     }
 
+    function testFuzz_calcUnrealizedPnL2(uint96 _size, uint64 _entryPrice, uint64 _price) public pure {
+        vm.assume(_entryPrice > 0 && _price > 0);
+
+        {
+            int256 scaledUSDPnL = (int256(uint256(_price)) - int256(uint256(_entryPrice))) * int256(uint256(_size));
+            int256 tokenPnL = scaledUSDPnL <= 0 ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price)) : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(LONG, _size, _entryPrice, _price);
+            assertEq(tokenPnLGot, tokenPnL);
+            assertEq(scaledUSDPnLGot, scaledUSDPnL);
+            if (tokenPnL <= 0) {
+                assertGt(tokenPnL, type(int184).min);
+            } else {
+                assertLe(tokenPnL, int256(uint256(type(uint184).max)));
+            }
+        }
+
+        {
+            int256 scaledUSDPnL = (int256(uint256(_entryPrice)) - int256(uint256(_price))) * int256(uint256(_size));
+            int256 tokenPnL = scaledUSDPnL <= 0 ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price)) : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(SHORT, _size, _entryPrice, _price);
+            assertEq(tokenPnLGot, tokenPnL);
+            assertEq(scaledUSDPnLGot, scaledUSDPnL);
+            if (tokenPnL <= 0) {
+                assertGt(tokenPnL, type(int184).min);
+            } else {
+                assertLe(tokenPnL, int256(uint256(type(uint184).max)));
+            }
+        }
+    }
+
     function testFuzz_calcReceiveAmount(
         uint96 _size,
         uint96 _tradingFee,
