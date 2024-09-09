@@ -1564,8 +1564,15 @@ contract PositionUtilTest is BaseTest {
 
         {
             int256 scaledUSDPnL = (int256(uint256(_price)) - int256(uint256(_entryPrice))) * int256(uint256(_size));
-            int256 tokenPnL = scaledUSDPnL <= 0 ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price)) : scaledUSDPnL / int256(uint256(_price));
-            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(LONG, _size, _entryPrice, _price);
+            int256 tokenPnL = scaledUSDPnL <= 0
+                ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price))
+                : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(
+                LONG,
+                _size,
+                _entryPrice,
+                _price
+            );
             assertEq(tokenPnLGot, tokenPnL);
             assertEq(scaledUSDPnLGot, scaledUSDPnL);
             if (tokenPnL <= 0) {
@@ -1577,8 +1584,15 @@ contract PositionUtilTest is BaseTest {
 
         {
             int256 scaledUSDPnL = (int256(uint256(_entryPrice)) - int256(uint256(_price))) * int256(uint256(_size));
-            int256 tokenPnL = scaledUSDPnL <= 0 ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price)) : scaledUSDPnL / int256(uint256(_price));
-            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(SHORT, _size, _entryPrice, _price);
+            int256 tokenPnL = scaledUSDPnL <= 0
+                ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price))
+                : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(
+                SHORT,
+                _size,
+                _entryPrice,
+                _price
+            );
             assertEq(tokenPnLGot, tokenPnL);
             assertEq(scaledUSDPnLGot, scaledUSDPnL);
             if (tokenPnL <= 0) {
