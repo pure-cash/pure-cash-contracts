@@ -276,6 +276,8 @@ library PUSDManagerUtil {
                 _cfg.decimals,
                 Math.Rounding.Up
             );
+            if (payAmount > positionCache.totalSupply)
+                revert IMarketErrors.InvalidAmount(positionCache.totalSupply, payAmount);
         }
 
         // First pay the market token
