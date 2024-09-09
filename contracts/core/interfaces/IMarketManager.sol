@@ -41,6 +41,11 @@ interface IMarketManager is
         uint128 lpLiquidity;
         /// @notice The size of the net position held by all LPs
         uint128 lpNetSize;
+        /// @notice The accumulated scaled USD PnL. For saving gas, this value is scaled up
+        /// by 10^(market decimals + price decimals - usd decimals)
+        int184 accumulateScaledUSDPnL;
+        /// @notice The previous settled price
+        uint64 previousSettledPrice;
     }
 
     struct State {

@@ -208,7 +208,14 @@ library PositionUtil {
                 })
             );
 
-            realizedPnL = calcUnrealizedPnL(LONG, _param.sizeDelta, positionCache.entryPrice, _param.minIndexPrice);
+            int184 scaledUSDPnL;
+            (realizedPnL, scaledUSDPnL) = calcUnrealizedPnL2(
+                LONG,
+                _param.sizeDelta,
+                positionCache.entryPrice,
+                _param.minIndexPrice
+            );
+            LiquidityUtil.reviseLiquidityPnL(packedState, _param.market, _param.minIndexPrice, scaledUSDPnL);
         }
 
         int256 marginAfter = int256(uint256(positionCache.margin));
@@ -317,6 +324,14 @@ library PositionUtil {
 
         // settle liquidity
         LiquidityUtil.settlePosition(_packedState, _param.market, SHORT, liquidationPrice, _positionCache.size);
+        // revise liquidity PnL
+        (, int184 scaledUSDPnL) = calcUnrealizedPnL2(
+            LONG,
+            _positionCache.size,
+            _positionCache.entryPrice,
+            liquidationPrice
+        );
+        LiquidityUtil.reviseLiquidityPnL(_packedState, _param.market, liquidationPrice, scaledUSDPnL);
 
         uint96 liquidationFee = calcLiquidationFee(
             _positionCache.size,
@@ -570,6 +585,41 @@ library PositionUtil {
                 if (_entryPrice < _price)
                     unrealizedPnL = -int256(Math.ceilDiv(uint256(_size) * (_price - _entryPrice), _price));
                 else unrealizedPnL = int256((uint256(_size) * (_entryPrice - _price)) / _price);
+            }
+        }
+    }
+
+    /// @notice Calculate the unrealized PnL of a position based on entry price
+    /// @param _side The side of the position (long or short)
+    /// @param _size The size of the position
+    /// @param _entryPrice The entry price of the position
+    /// @param _price The current price of the position
+    /// @return tokenPnL The unrealized PnL in token
+    /// @return scaledUSDPnL The unrealized PnL in USD. For saving gas, this value is scaled up
+    /// by 10^(market decimals + price decimals - usd decimals)
+    function calcUnrealizedPnL2(
+        Side _side,
+        uint96 _size,
+        uint64 _entryPrice,
+        uint64 _price
+    ) internal pure returns (int184 tokenPnL, int184 scaledUSDPnL) {
+        unchecked {
+            if (_side.isLong()) {
+                if (_entryPrice > _price) {
+                    scaledUSDPnL = -int184(uint184(_size) * (_entryPrice - _price));
+                    tokenPnL = -int184(uint184(Math.ceilDiv(uint184(-scaledUSDPnL), _price)));
+                } else {
+                    scaledUSDPnL = int184(uint184(_size) * (_price - _entryPrice));
+                    tokenPnL = scaledUSDPnL / int184(uint184(_price));
+                }
+            } else {
+                if (_entryPrice < _price) {
+                    scaledUSDPnL = -int184(uint184(_size) * (_price - _entryPrice));
+                    tokenPnL = -int184(uint184(Math.ceilDiv(uint184(-scaledUSDPnL), _price)));
+                } else {
+                    scaledUSDPnL = int184(uint184(_size) * (_entryPrice - _price));
+                    tokenPnL = scaledUSDPnL / int184(uint184(_price));
+                }
             }
         }
     }

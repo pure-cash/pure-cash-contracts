@@ -188,8 +188,13 @@ library LiquidityUtil {
                 _packedState.lpEntryPrice = entryPriceAfter;
                 emit IMarketLiquidity.GlobalLiquiditySettled(_market, int256(uint256(_sizeDelta)), 0, entryPriceAfter);
             } else {
-                int256 realizedPnL = PositionUtil.calcUnrealizedPnL(SHORT, _sizeDelta, entryPrice, _indexPrice);
-                _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + realizedPnL)
+                (int184 tokenPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
+                    SHORT,
+                    _sizeDelta,
+                    entryPrice,
+                    _indexPrice
+                );
+                _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + tokenPnL)
                     .toUint256()
                     .toUint128();
                 _packedState.lpNetSize = netSize - _sizeDelta;
@@ -197,10 +202,38 @@ library LiquidityUtil {
                 emit IMarketLiquidity.GlobalLiquiditySettled(
                     _market,
                     -int256(uint256(_sizeDelta)),
-                    realizedPnL,
+                    tokenPnL,
                     entryPrice
                 );
+
+                reviseLiquidityPnL(_packedState, _market, _indexPrice, scaledUSDPnL);
             }
         }
+    }
+
+    function reviseLiquidityPnL(
+        IMarketManager.PackedState storage _packedState,
+        IERC20 _market,
+        uint64 _indexPrice,
+        int184 _scaledUSDPnL
+    ) internal returns (int256 revisedTokenPnL) {
+        int184 accumulateScaledUSDPnL = _packedState.accumulateScaledUSDPnL;
+        uint64 previousSettledPrice = _packedState.previousSettledPrice;
+        if (previousSettledPrice > 0) {
+            unchecked {
+                int256 priceDiff = int256(uint256(previousSettledPrice)) - int256(uint256(_indexPrice));
+                priceDiff *= accumulateScaledUSDPnL;
+                revisedTokenPnL = priceDiff >= 0
+                    ? priceDiff / int256(uint256(_indexPrice) * previousSettledPrice)
+                    : -int256(Math.ceilDiv(uint256(-priceDiff), uint256(_indexPrice) * previousSettledPrice));
+            }
+            _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + revisedTokenPnL)
+                .toUint256()
+                .toUint128();
+        }
+        _packedState.previousSettledPrice = _indexPrice;
+        _packedState.accumulateScaledUSDPnL = accumulateScaledUSDPnL + _scaledUSDPnL;
+
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(_market, _indexPrice, _scaledUSDPnL, revisedTokenPnL);
     }
 }

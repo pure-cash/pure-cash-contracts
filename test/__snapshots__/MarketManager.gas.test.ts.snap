@@ -4,17 +4,17 @@ exports[`MarketManager #executeOrCancelBurnLPT burn all 1`] = `166179`;
 
 exports[`MarketManager #executeOrCancelBurnLPT burn half 1`] = `167872`;
 
-exports[`MarketManager #executeOrCancelBurnPUSD burn all 1`] = `186917`;
+exports[`MarketManager #executeOrCancelBurnPUSD burn all 1`] = `191048`;
 
-exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `186908`;
+exports[`MarketManager #executeOrCancelBurnPUSD burn half 1`] = `191048`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease all 1`] = `184941`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease all 1`] = `213038`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `209764`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease all with liquidity buffer module burn 1`] = `221385`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease half 1`] = `191339`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease half 1`] = `219403`;
 
-exports[`MarketManager #executeOrCancelDecreasePosition decrease half with liquidity buffer module burn 1`] = `216163`;
+exports[`MarketManager #executeOrCancelDecreasePosition decrease half with liquidity buffer module burn 1`] = `227739`;
 
 exports[`MarketManager #executeOrCancelIncreasePosition different user first increase 1`] = `162303`;
 
@@ -32,15 +32,15 @@ exports[`MarketManager #executeOrCancelMintLPT first mint 1`] = `223199`;
 
 exports[`MarketManager #executeOrCancelMintLPT same user mint again 1`] = `140242`;
 
-exports[`MarketManager #executeOrCancelMintPUSD different user first mint 1`] = `204227`;
+exports[`MarketManager #executeOrCancelMintPUSD different user first mint 1`] = `212278`;
 
-exports[`MarketManager #executeOrCancelMintPUSD first mint 1`] = `255379`;
+exports[`MarketManager #executeOrCancelMintPUSD first mint 1`] = `279804`;
 
-exports[`MarketManager #executeOrCancelMintPUSD same user mint again 1`] = `187127`;
+exports[`MarketManager #executeOrCancelMintPUSD same user mint again 1`] = `195178`;
 
-exports[`MarketManager #liquidatePosition liquidate 1`] = `155817`;
+exports[`MarketManager #liquidatePosition liquidate 1`] = `184021`;
 
-exports[`MarketManager #liquidatePosition liquidate with liquidity buffer module 1`] = `180478`;
+exports[`MarketManager #liquidatePosition liquidate with liquidity buffer module 1`] = `192326`;
 
 exports[`MarketManager #psmBurnPUSD burn 1`] = `77949`;
 
