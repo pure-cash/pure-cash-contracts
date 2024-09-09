@@ -623,4 +623,103 @@ contract LiquidityUtilTest is BaseTest {
         assertEq(state.packedState.lpEntryPrice, _entryPrice);
         assertEq(int256(uint256((state.packedState.lpLiquidity))), unrealizedPnL + int256(uint256(_liquidity)));
     }
+
+    function test_reviseLiquidityPnL_previousSettledPriceIsZero() public {
+        state.packedState.previousSettledPrice = 0;
+        state.packedState.accumulateScaledUSDPnL = 20000000;
+        state.packedState.lpLiquidity = 100e18;
+
+        uint128 lpLiquidityBefore = state.packedState.lpLiquidity;
+
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, PRICE, 12345678, 0);
+        LiquidityUtil.reviseLiquidityPnL(state.packedState, market, PRICE, 12345678);
+
+        assertEq(state.packedState.previousSettledPrice, PRICE);
+        assertEq(state.packedState.accumulateScaledUSDPnL, 32345678);
+        assertEq(state.packedState.lpLiquidity, lpLiquidityBefore);
+    }
+
+    function test_reviseLiquidityPnL_previousSettledPriceIsPositiveAndPriceHigher() public {
+        state.packedState.previousSettledPrice = PRICE;
+        state.packedState.accumulateScaledUSDPnL = 20000000e10;
+        state.packedState.lpLiquidity = 100e18;
+
+        uint128 lpLiquidityBefore = state.packedState.lpLiquidity;
+        uint64 newPrice = (PRICE * 12) / 10;
+        int256 revisedTokenPnL = -int256(
+            Math.ceilDiv(
+                uint256(newPrice - PRICE) * uint184(state.packedState.accumulateScaledUSDPnL),
+                uint256(newPrice) * state.packedState.previousSettledPrice
+            )
+        );
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, newPrice, 12345678e10, revisedTokenPnL);
+        LiquidityUtil.reviseLiquidityPnL(state.packedState, market, newPrice, 12345678e10);
+
+        assertEq(state.packedState.previousSettledPrice, newPrice);
+        assertEq(state.packedState.accumulateScaledUSDPnL, 20000000e10 + 12345678e10);
+        assertEq(state.packedState.lpLiquidity, uint256(int256(uint256(lpLiquidityBefore)) + revisedTokenPnL));
+    }
+
+    function test_reviseLiquidityPnL_previousSettledPriceIsPositiveAndPriceLower() public {
+        state.packedState.previousSettledPrice = PRICE;
+        state.packedState.accumulateScaledUSDPnL = 20000000e10;
+        state.packedState.lpLiquidity = 100e18;
+
+        uint128 lpLiquidityBefore = state.packedState.lpLiquidity;
+        uint64 newPrice = PRICE / 2;
+        int256 revisedTokenPnL = int256(
+            (uint256(state.packedState.previousSettledPrice - newPrice) *
+                uint184(state.packedState.accumulateScaledUSDPnL)) /
+                (uint256(newPrice) * state.packedState.previousSettledPrice)
+        );
+
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, newPrice, 12345678e10, revisedTokenPnL);
+        LiquidityUtil.reviseLiquidityPnL(state.packedState, market, newPrice, 12345678e10);
+
+        assertEq(state.packedState.previousSettledPrice, newPrice);
+        assertEq(state.packedState.accumulateScaledUSDPnL, 20000000e10 + 12345678e10);
+        assertEq(state.packedState.lpLiquidity, uint256(int256(uint256(lpLiquidityBefore)) + revisedTokenPnL));
+    }
+
+    function testFuzz_reviseLiquidityPnL(
+        uint64 _previousSettledPrice,
+        int184 _accumulateScaledUSDPnL,
+        uint64 _indexPrice,
+        int184 _scaledUSDPnL
+    ) public {
+        vm.assume(_previousSettledPrice > 0 && _indexPrice > 0);
+        vm.assume(
+            int256(_accumulateScaledUSDPnL) + _scaledUSDPnL >= type(int184).min &&
+                int256(_accumulateScaledUSDPnL) + _scaledUSDPnL <= type(int184).max
+        );
+
+        state.packedState.previousSettledPrice = _previousSettledPrice;
+        state.packedState.accumulateScaledUSDPnL = _accumulateScaledUSDPnL;
+
+        int256 priceDiff = (int256(uint256(_previousSettledPrice)) - int256(uint256(_indexPrice))) *
+            _accumulateScaledUSDPnL;
+        int256 revisedTokenPnL = priceDiff >= 0
+            ? priceDiff / int256(uint256(_indexPrice) * _previousSettledPrice)
+            : -int256(Math.ceilDiv(uint256(-priceDiff), uint256(_indexPrice) * _previousSettledPrice));
+        vm.assume(
+            revisedTokenPnL > -int256(uint256(type(uint128).max)) &&
+                revisedTokenPnL < int256(uint256(type(uint128).max))
+        );
+        if (revisedTokenPnL < 0) {
+            state.packedState.lpLiquidity = uint128(uint256(-revisedTokenPnL));
+        } else {
+            state.packedState.lpLiquidity = uint128(type(uint128).max - uint256(revisedTokenPnL));
+        }
+        uint128 lpLiquidityBefore = state.packedState.lpLiquidity;
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, _indexPrice, _scaledUSDPnL, revisedTokenPnL);
+        LiquidityUtil.reviseLiquidityPnL(state.packedState, market, _indexPrice, _scaledUSDPnL);
+
+        assertEq(state.packedState.previousSettledPrice, _indexPrice);
+        assertEq(state.packedState.accumulateScaledUSDPnL, _accumulateScaledUSDPnL + _scaledUSDPnL);
+        assertEq(state.packedState.lpLiquidity, uint256(int256(uint256(lpLiquidityBefore)) + revisedTokenPnL));
+    }
 }
