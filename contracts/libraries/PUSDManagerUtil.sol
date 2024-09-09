@@ -336,12 +336,13 @@ library PUSDManagerUtil {
             })
         );
 
-        int256 realizedPnL = PositionUtil.calcUnrealizedPnL(
+        (int256 realizedPnL, int184 scaleUSDPnL) = PositionUtil.calcUnrealizedPnL2(
             SHORT,
             _param.sizeDelta,
             positionCache.entryPrice,
             _param.indexPrice
         );
+        LiquidityUtil.reviseLiquidityPnL(_packedState, _param.market, _param.indexPrice, scaleUSDPnL);
 
         uint96 receiveAmount;
         uint64 pusdDebtDelta;
