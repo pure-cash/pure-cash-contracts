@@ -1078,6 +1078,8 @@ contract PositionUtilTest is BaseTest {
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByTradingFee(market, 9333333333333628);
         vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, newPrice, 158405665565680000000000000000000, 0);
+        vm.expectEmit();
         emit IPUSDManager.PUSDPositionDecreased(
             market,
             address(this),
@@ -1104,6 +1106,15 @@ contract PositionUtilTest is BaseTest {
             -4112048372652685645,
             30889104785304
         );
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(
+            market,
+            31537523904550,
+            -129683823849200000000000000000000,
+            -1643898676222120072
+        );
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, 31537523904550, -28721841716600000000000000000000, 0);
         vm.expectEmit();
         emit IMarketManager.GlobalStabilityFundIncreasedByLiquidation(param.market, 803642878471186030);
         vm.expectEmit();
@@ -1133,7 +1144,11 @@ contract PositionUtilTest is BaseTest {
             assertEq(state.packedState.lpEntryPrice, 30889104785304);
             assertEq(
                 state.packedState.lpLiquidity,
-                packedStateBefore.lpLiquidity + 9333333333333628 + 70318751866228778 - 4112048372652685645
+                packedStateBefore.lpLiquidity +
+                    9333333333333628 +
+                    70318751866228778 -
+                    4112048372652685645 -
+                    1643898676222120072
             );
             assertEq(state.packedState.longSize, packedStateBefore.longSize - positionBefore.size);
             IMarketManager.Position memory position = state.longPositions[param.account];
