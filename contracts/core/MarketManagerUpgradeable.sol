@@ -71,6 +71,7 @@ contract MarketManagerUpgradeable is PSMUpgradeable, PriceFeedUpgradeable {
         State storage state = $.marketStates[_market];
 
         liquidity = state.burnLPT(
+            _configurableStorage().marketConfigs[_market],
             LiquidityUtil.BurnParam({
                 market: _market,
                 account: _account,

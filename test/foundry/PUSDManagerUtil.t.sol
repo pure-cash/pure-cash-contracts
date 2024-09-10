@@ -648,6 +648,31 @@ contract PUSDManagerUtilTest is BaseTest {
         );
     }
 
+    function test_burn_exactOut_revertIf_invalidAmount() public {
+        _prepareBurnState();
+        uint64 newPrice = price * 10;
+        console.log(market.balanceOf(address(this)));
+        console.log(pusd.balanceOf(address(this)));
+        uint96 expectAmount = PositionUtil.calcMarketTokenValue(138293856967, newPrice, cfg.decimals);
+
+        pusd.transfer(address(pusdManagerCallback), 158294856967);
+
+        vm.expectRevert(abi.encodeWithSelector(IMarketErrors.InvalidAmount.selector, 158294856967, 1384599412379));
+        UtilTest.burn(
+            state,
+            cfg,
+            PUSDManagerUtil.BurnParam({
+                market: market,
+                exactIn: false,
+                amount: expectAmount,
+                callback: pusdManagerCallback,
+                indexPrice: newPrice,
+                receiver: receiver
+            }),
+            abi.encode(IPositionRouterCommon.CallbackData({margin: 158294856967, account: msg.sender}))
+        );
+    }
+
     function test_burn_exactOut_pass() public {
         _prepareBurnState();
         {

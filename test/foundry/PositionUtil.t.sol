@@ -91,20 +91,20 @@ contract PositionUtilTest is BaseTest {
     function test_increasePosition_revertIf_sizeExceedsMaxSizePerPosition() public {
         state.packedState.lpEntryPrice = price;
         state.packedState.lpNetSize = 0;
-        state.packedState.lpLiquidity = 399 * 1e18;
+        state.packedState.lpLiquidity = cfg.liquidityCap;
         cfg.maxSizeRatePerPosition = 0.5 * 1e7; // 0.5
 
         PositionUtil.IncreasePositionParam memory param = PositionUtil.IncreasePositionParam({
             market: market,
             account: account,
-            marginDelta: 100 * 1e18,
-            sizeDelta: 200 * 1e18,
+            marginDelta: 500000e18 + 1,
+            sizeDelta: 500000e18 + 1,
             minIndexPrice: price,
             maxIndexPrice: price
         });
 
         vm.expectRevert(
-            abi.encodeWithSelector(IMarketErrors.SizeExceedsMaxSizePerPosition.selector, 200 * 1e18, 199.5 * 1e18)
+            abi.encodeWithSelector(IMarketErrors.SizeExceedsMaxSizePerPosition.selector, 500000e18 + 1, 500000e18)
         );
         PositionUtil.increasePosition(state, cfg, param);
     }
@@ -1078,6 +1078,8 @@ contract PositionUtilTest is BaseTest {
         vm.expectEmit();
         emit IMarketLiquidity.GlobalLiquidityIncreasedByTradingFee(market, 9333333333333628);
         vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, newPrice, 158405665565680000000000000000000, 0);
+        vm.expectEmit();
         emit IPUSDManager.PUSDPositionDecreased(
             market,
             address(this),
@@ -1104,6 +1106,15 @@ contract PositionUtilTest is BaseTest {
             -4112048372652685645,
             30889104785304
         );
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(
+            market,
+            31537523904550,
+            -129683823849200000000000000000000,
+            -1643898676222120072
+        );
+        vm.expectEmit();
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(market, 31537523904550, -28721841716600000000000000000000, 0);
         vm.expectEmit();
         emit IMarketManager.GlobalStabilityFundIncreasedByLiquidation(param.market, 803642878471186030);
         vm.expectEmit();
@@ -1133,7 +1144,11 @@ contract PositionUtilTest is BaseTest {
             assertEq(state.packedState.lpEntryPrice, 30889104785304);
             assertEq(
                 state.packedState.lpLiquidity,
-                packedStateBefore.lpLiquidity + 9333333333333628 + 70318751866228778 - 4112048372652685645
+                packedStateBefore.lpLiquidity +
+                    9333333333333628 +
+                    70318751866228778 -
+                    4112048372652685645 -
+                    1643898676222120072
             );
             assertEq(state.packedState.longSize, packedStateBefore.longSize - positionBefore.size);
             IMarketManager.Position memory position = state.longPositions[param.account];
@@ -1555,6 +1570,50 @@ contract PositionUtilTest is BaseTest {
                 assertGt(pnl, type(int168).min);
             } else {
                 assertLe(pnl, int256(uint256(type(uint160).max)));
+            }
+        }
+    }
+
+    function testFuzz_calcUnrealizedPnL2(uint96 _size, uint64 _entryPrice, uint64 _price) public pure {
+        vm.assume(_entryPrice > 0 && _price > 0);
+
+        {
+            int256 scaledUSDPnL = (int256(uint256(_price)) - int256(uint256(_entryPrice))) * int256(uint256(_size));
+            int256 tokenPnL = scaledUSDPnL <= 0
+                ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price))
+                : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(
+                LONG,
+                _size,
+                _entryPrice,
+                _price
+            );
+            assertEq(tokenPnLGot, tokenPnL);
+            assertEq(scaledUSDPnLGot, scaledUSDPnL);
+            if (tokenPnL <= 0) {
+                assertGt(tokenPnL, type(int184).min);
+            } else {
+                assertLe(tokenPnL, int256(uint256(type(uint184).max)));
+            }
+        }
+
+        {
+            int256 scaledUSDPnL = (int256(uint256(_entryPrice)) - int256(uint256(_price))) * int256(uint256(_size));
+            int256 tokenPnL = scaledUSDPnL <= 0
+                ? -int256(Math.ceilDiv(uint256(-scaledUSDPnL), _price))
+                : scaledUSDPnL / int256(uint256(_price));
+            (int184 tokenPnLGot, int184 scaledUSDPnLGot) = PositionUtil.calcUnrealizedPnL2(
+                SHORT,
+                _size,
+                _entryPrice,
+                _price
+            );
+            assertEq(tokenPnLGot, tokenPnL);
+            assertEq(scaledUSDPnLGot, scaledUSDPnL);
+            if (tokenPnL <= 0) {
+                assertGt(tokenPnL, type(int184).min);
+            } else {
+                assertLe(tokenPnL, int256(uint256(type(uint184).max)));
             }
         }
     }

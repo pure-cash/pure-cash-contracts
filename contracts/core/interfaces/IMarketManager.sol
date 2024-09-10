@@ -41,6 +41,11 @@ interface IMarketManager is
         uint128 lpLiquidity;
         /// @notice The size of the net position held by all LPs
         uint128 lpNetSize;
+        /// @notice The accumulated scaled USD PnL. For saving gas, this value is scaled up
+        /// by 10^(market decimals + price decimals - usd decimals)
+        int184 accumulateScaledUSDPnL;
+        /// @notice The previous settled price
+        uint64 previousSettledPrice;
     }
 
     struct State {
@@ -60,10 +65,15 @@ interface IMarketManager is
         uint256 globalStabilityFund;
     }
 
-    /// @notice Emitted when the protocol fee is increased
+    /// @notice Emitted when the protocol fee is increased by trading fee
     /// @param market The target market contract address, such as the contract address of WETH
     /// @param amount The increased protocol fee
     event ProtocolFeeIncreased(IERC20 indexed market, uint96 amount);
+
+    /// @notice Emitted when the protocol fee is increased by LP trading fee
+    /// @param market The target market contract address, such as the contract address of WETH
+    /// @param amount The increased protocol fee
+    event ProtocolFeeIncreasedByLPTradingFee(IERC20 indexed market, uint96 amount);
 
     /// @notice Emitted when the protocol fee is collected
     /// @param market The target market contract address, such as the contract address of WETH

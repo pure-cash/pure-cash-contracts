@@ -52,18 +52,41 @@ library LiquidityUtil {
         MintParam memory _param
     ) public returns (uint64 tokenValue) {
         unchecked {
+            uint256 tradingFee = Math.ceilDiv(
+                uint256(_param.liquidity) * _cfg.liquidityTradingFeeRate,
+                Constants.BASIS_POINTS_DIVISOR
+            );
             IMarketManager.PackedState storage packedState = _state.packedState;
             uint128 liquidityBefore = packedState.lpLiquidity;
-            uint256 liquidityAfter = uint256(liquidityBefore) + _param.liquidity;
+            uint24 protocolFeeRate = liquidityBefore == 0 ? Constants.BASIS_POINTS_DIVISOR : _cfg.protocolFeeRate;
+            uint96 protocolFee = uint96((tradingFee * protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR);
+            uint96 liquidityFee = uint96(tradingFee - protocolFee);
+
+            uint96 liquidity = uint96(_param.liquidity - tradingFee);
+            uint256 liquidityAfter = uint256(liquidityBefore) + liquidity;
             if (liquidityAfter > _cfg.liquidityCap)
                 revert IMarketErrors.LiquidityCapExceeded(liquidityBefore, _param.liquidity, _cfg.liquidityCap);
+
+            // If the cap is exceeded due to the trading fee, the excess part is added to the protocol fee
+            uint256 liquidityAfterWithFee = liquidityAfter + liquidityFee;
+            if (liquidityAfterWithFee > _cfg.liquidityCap) {
+                liquidityFee = uint96(_cfg.liquidityCap - liquidityAfter);
+                protocolFee = uint96(tradingFee - liquidityFee);
+                liquidityAfter = _cfg.liquidityCap;
+            } else {
+                liquidityAfter = liquidityAfterWithFee;
+            }
+
+            _state.protocolFee += protocolFee; // overflow is desired
+            emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(_param.market, protocolFee);
+
             packedState.lpLiquidity = uint128(liquidityAfter);
 
             ILPToken token = ILPToken(computeLPTokenAddress(_param.market));
             uint256 totalSupply = token.totalSupply();
             if (totalSupply == 0) {
                 tokenValue = PositionUtil.calcDecimals6TokenValue(
-                    _param.liquidity,
+                    liquidity,
                     _param.indexPrice,
                     _cfg.decimals,
                     Math.Rounding.Down
@@ -76,33 +99,72 @@ library LiquidityUtil {
                     _param.indexPrice
                 );
                 tokenValue = Math
-                    .mulDiv(_param.liquidity, totalSupply, (pnl + int256(uint256(liquidityBefore))).toUint256())
+                    .mulDiv(liquidity, totalSupply, (pnl + int256(uint256(liquidityBefore) + liquidityFee)).toUint256())
                     .toUint64();
             }
 
             // mint LPT
             token.mint(_param.receiver, tokenValue);
+
+            emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(_param.market, liquidityFee);
+            emit IMarketLiquidity.LPTMinted(
+                _param.market,
+                _param.account,
+                _param.receiver,
+                liquidity,
+                tokenValue,
+                uint96(tradingFee)
+            );
         }
-        emit IMarketLiquidity.LPTMinted(_param.market, _param.account, _param.receiver, _param.liquidity, tokenValue);
     }
 
-    function burnLPT(IMarketManager.State storage _state, BurnParam memory _param) public returns (uint96 liquidity) {
+    function burnLPT(
+        IMarketManager.State storage _state,
+        IConfigurable.MarketConfig storage _cfg,
+        BurnParam memory _param
+    ) public returns (uint96 liquidity) {
         IMarketManager.PackedState storage packedState = _state.packedState;
         (uint128 liquidityBefore, uint128 netSize) = (packedState.lpLiquidity, packedState.lpNetSize);
         int256 pnl = PositionUtil.calcUnrealizedPnL(SHORT, netSize, packedState.lpEntryPrice, _param.indexPrice);
         ILPToken token = ILPToken(computeLPTokenAddress(_param.market));
         unchecked {
-            liquidity = Math
-                .mulDiv((pnl + int256(uint256(liquidityBefore))).toUint256(), _param.tokenValue, token.totalSupply())
+            uint256 totalSupplyBefore = token.totalSupply();
+            uint96 liquidityWithFee = Math
+                .mulDiv((pnl + int256(uint256(liquidityBefore))).toUint256(), _param.tokenValue, totalSupplyBefore)
                 .toUint96();
-            if (uint256(netSize) + liquidity > liquidityBefore) revert IMarketErrors.BalanceRateCapExceeded();
+            uint256 tradingFee = Math.ceilDiv(
+                uint256(liquidityWithFee) * _cfg.liquidityTradingFeeRate,
+                Constants.BASIS_POINTS_DIVISOR
+            );
 
-            packedState.lpLiquidity = liquidityBefore - liquidity;
+            uint24 protocolFeeRate = totalSupplyBefore == _param.tokenValue
+                ? Constants.BASIS_POINTS_DIVISOR
+                : _cfg.protocolFeeRate;
+            uint96 protocolFee = uint96((tradingFee * protocolFeeRate) / Constants.BASIS_POINTS_DIVISOR);
+            _state.protocolFee += protocolFee; // overflow is desired
+            emit IMarketManager.ProtocolFeeIncreasedByLPTradingFee(_param.market, protocolFee);
+
+            uint96 liquidityFee = uint96(tradingFee - protocolFee);
+            // netSize <= liquidityBefore - liquidityWithFee + liquidityFee
+            if (uint256(netSize) + liquidityWithFee > uint256(liquidityBefore) + liquidityFee)
+                revert IMarketErrors.BalanceRateCapExceeded();
+            uint128 liquidityAfter = liquidityBefore + liquidityFee - liquidityWithFee;
+            packedState.lpLiquidity = liquidityAfter;
+            liquidity = liquidityWithFee - uint96(tradingFee);
+
+            // burn LPT
+            token.burn(_param.tokenValue);
+
+            emit IMarketLiquidity.GlobalLiquidityIncreasedByLPTradingFee(_param.market, liquidityFee);
+            emit IMarketLiquidity.LPTBurned(
+                _param.market,
+                _param.account,
+                _param.receiver,
+                liquidity,
+                _param.tokenValue,
+                uint96(tradingFee)
+            );
         }
-        // burn LPT
-        token.burn(_param.tokenValue);
-
-        emit IMarketLiquidity.LPTBurned(_param.market, _param.account, _param.receiver, liquidity, _param.tokenValue);
     }
 
     function settlePosition(
@@ -126,8 +188,13 @@ library LiquidityUtil {
                 _packedState.lpEntryPrice = entryPriceAfter;
                 emit IMarketLiquidity.GlobalLiquiditySettled(_market, int256(uint256(_sizeDelta)), 0, entryPriceAfter);
             } else {
-                int256 realizedPnL = PositionUtil.calcUnrealizedPnL(SHORT, _sizeDelta, entryPrice, _indexPrice);
-                _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + realizedPnL)
+                (int184 tokenPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
+                    SHORT,
+                    _sizeDelta,
+                    entryPrice,
+                    _indexPrice
+                );
+                _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + tokenPnL)
                     .toUint256()
                     .toUint128();
                 _packedState.lpNetSize = netSize - _sizeDelta;
@@ -135,10 +202,38 @@ library LiquidityUtil {
                 emit IMarketLiquidity.GlobalLiquiditySettled(
                     _market,
                     -int256(uint256(_sizeDelta)),
-                    realizedPnL,
+                    tokenPnL,
                     entryPrice
                 );
+
+                reviseLiquidityPnL(_packedState, _market, _indexPrice, scaledUSDPnL);
             }
         }
+    }
+
+    function reviseLiquidityPnL(
+        IMarketManager.PackedState storage _packedState,
+        IERC20 _market,
+        uint64 _indexPrice,
+        int184 _scaledUSDPnL
+    ) internal returns (int256 revisedTokenPnL) {
+        int184 accumulateScaledUSDPnL = _packedState.accumulateScaledUSDPnL;
+        uint64 previousSettledPrice = _packedState.previousSettledPrice;
+        if (previousSettledPrice > 0) {
+            unchecked {
+                int256 priceDiff = int256(uint256(previousSettledPrice)) - int256(uint256(_indexPrice));
+                priceDiff *= accumulateScaledUSDPnL;
+                revisedTokenPnL = priceDiff >= 0
+                    ? priceDiff / int256(uint256(_indexPrice) * previousSettledPrice)
+                    : -int256(Math.ceilDiv(uint256(-priceDiff), uint256(_indexPrice) * previousSettledPrice));
+            }
+            _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + revisedTokenPnL)
+                .toUint256()
+                .toUint128();
+        }
+        _packedState.previousSettledPrice = _indexPrice;
+        _packedState.accumulateScaledUSDPnL = accumulateScaledUSDPnL + _scaledUSDPnL;
+
+        emit IMarketLiquidity.GlobalLiquidityPnLRevised(_market, _indexPrice, _scaledUSDPnL, revisedTokenPnL);
     }
 }

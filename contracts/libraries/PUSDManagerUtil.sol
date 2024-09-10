@@ -113,12 +113,18 @@ library PUSDManagerUtil {
         (uint128 lpNetSize, uint128 lpLiquidity) = (packedState.lpNetSize, packedState.lpLiquidity);
         if (sizeDelta > lpNetSize) revert IMarketErrors.InsufficientSizeToDecrease(sizeDelta, lpNetSize);
 
+        uint128 sizeBefore = position.size;
+        uint128 sizeAfter;
         unchecked {
-            uint128 minMintingSizeCap = uint128(
-                (uint256(_cfg.minMintingRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR
-            );
+            // Because the short position is always less than or equal to the long position,
+            // there will be no overflow here.
+            sizeAfter = sizeBefore + sizeDelta;
+            uint256 maxShortSize = (uint256(_cfg.maxShortSizeRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR;
+            if (sizeAfter > maxShortSize) revert IMarketErrors.MaxShortSizeExceeded(sizeAfter, maxShortSize);
+
+            uint256 minMintingSizeCap = (uint256(_cfg.minMintingRate) * lpLiquidity) / Constants.BASIS_POINTS_DIVISOR;
             if (lpNetSize - sizeDelta < minMintingSizeCap)
-                revert IMarketErrors.MinMintingSizeCapNotMet(lpNetSize, sizeDelta, minMintingSizeCap);
+                revert IMarketErrors.MinMintingSizeCapNotMet(lpNetSize, sizeDelta, uint128(minMintingSizeCap));
         }
 
         // settle liquidity
@@ -154,7 +160,6 @@ library PUSDManagerUtil {
         payAmount = actualPayAmount;
         _state.tokenBalance += payAmount;
 
-        uint128 sizeBefore = position.size;
         uint64 entryPriceAfter = PositionUtil.calcNextEntryPrice(
             SHORT,
             sizeBefore,
@@ -163,13 +168,9 @@ library PUSDManagerUtil {
             _param.indexPrice
         );
 
-        unchecked {
-            position.totalSupply = totalSupplyAfter;
-            // Because the short position is always less than or equal to the long position,
-            // there will be no overflow
-            position.size = sizeBefore + sizeDelta;
-            position.entryPrice = entryPriceAfter;
-        }
+        position.totalSupply = totalSupplyAfter;
+        position.size = sizeAfter;
+        position.entryPrice = entryPriceAfter;
 
         spreadFactorAfterX96 = SpreadUtil.calcSpreadFactorAfterX96(spreadFactorAfterX96, SHORT, sizeDelta);
         _refreshSpreadFactor(packedState, _param.market, spreadFactorAfterX96);
@@ -252,16 +253,17 @@ library PUSDManagerUtil {
         uint96 spread = SpreadUtil.calcSpreadAmount(spreadX96, sizeDelta, Math.Rounding.Down);
         PositionUtil.distributeSpread(_state, _param.market, spread);
 
-        int256 realizedPnL = PositionUtil.calcUnrealizedPnL(
+        (int256 tokenPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
             SHORT,
             sizeDelta,
             positionCache.entryPrice,
             _param.indexPrice
         );
+        LiquidityUtil.reviseLiquidityPnL(packedState, _param.market, _param.indexPrice, scaledUSDPnL);
 
         if (_param.exactIn) {
             unchecked {
-                int256 receiveAmountInt = int256(uint256(sizeDelta)) + realizedPnL;
+                int256 receiveAmountInt = int256(uint256(sizeDelta)) + tokenPnL;
                 receiveAmountInt -= int256(uint256(tradingFee) + spread);
                 if (receiveAmountInt < 0) revert IMarketErrors.NegativeReceiveAmount(receiveAmountInt);
                 receiveAmount = uint256(receiveAmountInt).toUint96();
@@ -274,6 +276,8 @@ library PUSDManagerUtil {
                 _cfg.decimals,
                 Math.Rounding.Up
             );
+            if (payAmount > positionCache.totalSupply)
+                revert IMarketErrors.InvalidAmount(positionCache.totalSupply, payAmount);
         }
 
         // First pay the market token
@@ -304,7 +308,7 @@ library PUSDManagerUtil {
             _param.indexPrice,
             payAmount,
             receiveAmount,
-            realizedPnL,
+            tokenPnL,
             tradingFee,
             spread
         );
@@ -334,12 +338,13 @@ library PUSDManagerUtil {
             })
         );
 
-        int256 realizedPnL = PositionUtil.calcUnrealizedPnL(
+        (int256 realizedPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
             SHORT,
             _param.sizeDelta,
             positionCache.entryPrice,
             _param.indexPrice
         );
+        LiquidityUtil.reviseLiquidityPnL(_packedState, _param.market, _param.indexPrice, scaledUSDPnL);
 
         uint96 receiveAmount;
         uint64 pusdDebtDelta;

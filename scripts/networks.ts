@@ -7,7 +7,7 @@ const defaultCfg = {
     minMarginPerPosition: ethers.parseUnits("0.005", "ether"),
     maxLeveragePerPosition: 10n,
     liquidationFeeRatePerPosition: parsePercent("2.5%"),
-    maxSizeRatePerPosition: parsePercent("100%"),
+    maxSizeRatePerPosition: parsePercent("0.1%"),
     liquidationExecutionFee: ethers.parseUnits("0.00032", "ether"),
     liquidityCap: ethers.parseUnits("200000", "ether"),
     liquidityBufferModuleEnabled: true,
@@ -16,11 +16,13 @@ const defaultCfg = {
     protocolFeeRate: parsePercent("50%"),
     openPositionThreshold: parsePercent("90%"),
     maxFeeRate: parsePercent("2%"),
-    minMintingRate: parsePercent("50%"),
+    minMintingRate: parsePercent("70%"),
     maxBurningRate: parsePercent("95%"),
     riskFreeTime: 7200,
     liquidityScale: ethers.parseUnits("1000000", "ether"),
     stableCoinSupplyCap: BigInt(10e8) * 10n ** 6n,
+    liquidityTradingFeeRate: parsePercent("0.05%"),
+    maxShortSizeRate: parsePercent("200%"),
 };
 
 const wbtcCfg = {
@@ -54,18 +56,18 @@ const defaultMaxCumulativeDeltaDiff = 100n * 1000n; // 10%
 
 const defaultExecutionGasLimit = {
     positionRouter: {
-        [EstimatedGasLimitType.IncreasePosition]: 195000,
-        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 260000,
-        [EstimatedGasLimitType.DecreasePosition]: 210000,
-        [EstimatedGasLimitType.DecreasePositionReceivePUSD]: 280000,
-        [EstimatedGasLimitType.MintPUSD]: 240000,
-        [EstimatedGasLimitType.BurnPUSD]: 240000,
+        [EstimatedGasLimitType.IncreasePosition]: 197500,
+        [EstimatedGasLimitType.IncreasePositionPayPUSD]: 266640,
+        [EstimatedGasLimitType.DecreasePosition]: 238064,
+        [EstimatedGasLimitType.DecreasePositionReceivePUSD]: 308064,
+        [EstimatedGasLimitType.MintPUSD]: 248300,
+        [EstimatedGasLimitType.BurnPUSD]: 244340,
     },
     positionRouter2: {
-        [EstimatedGasLimitType.MintLPT]: 190000,
-        [EstimatedGasLimitType.MintLPTPayPUSD]: 250000,
-        [EstimatedGasLimitType.BurnLPT]: 190000,
-        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 280000,
+        [EstimatedGasLimitType.MintLPT]: 198000,
+        [EstimatedGasLimitType.MintLPTPayPUSD]: 262140,
+        [EstimatedGasLimitType.BurnLPT]: 196500,
+        [EstimatedGasLimitType.BurnLPTReceivePUSD]: 290640,
     },
     balanceRateBalancer: {
         [EstimatedGasLimitType.IncreaseBalanceRate]: 400000,
@@ -160,9 +162,9 @@ export const networks = {
         },
         collaterals: [
             {
-                symbol: "DAI",
-                token: "0x47b81f1849BbfC29eb483c6A9BFD86fE66cd099f",
-                cap: ethers.parseUnits("10000000", "ether"),
+                symbol: "USDC",
+                token: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                cap: ethers.parseUnits("10000000", 6),
             },
         ],
         tokenToStake: [
@@ -215,15 +217,39 @@ export const networks = {
         },
         collaterals: [
             {
-                symbol: "DAI",
-                token: "0x6B175474E89094C44Da98b954EedeAC495271d0F", // https://etherscan.io/address/0x6B175474E89094C44Da98b954EedeAC495271d0F
-                cap: ethers.parseUnits("50000000", "ether"),
+                symbol: "USDC",
+                token: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+                cap: ethers.parseUnits("50000000", 6),
             },
         ],
         tokenToStake: [
             {
-                token: undefined,
-                limit: 100n * 10000n,
+                token: "0x54E2f1c249A6A99e616D6bFDc737b868CE85ABBa", // PUSD
+                limit: ethers.parseUnits("50000000", 6), // 50M
+            },
+            {
+                token: "0xe33db3b492b1e6df86377ca172c7e198d34ac122", // PUSD/USDC
+                limit: ethers.parseUnits("10000000", 18), // 10M
+            },
+            {
+                token: "0xfca116b6DD29856Cec9E7E5D0F6dc3464b4568d2", // PUSD/DAI
+                limit: ethers.parseUnits("5000000", 18), // 5M
+            },
+            {
+                token: "0x2eb9f342bf5b6d4e4e660a84591da47190c4682f", // PUSD/crvUSD
+                limit: ethers.parseUnits("5000000", 18), // 5M
+            },
+            {
+                token: "0x1e63faa64a629f329241410b1c95bd6440414c5a", // PUSD/GHO
+                limit: ethers.parseUnits("5000000", 18), // 5M
+            },
+            {
+                token: "0x2c861290d674783e5434d4de06e41470ca1a706b", // PUSD/USDT
+                limit: ethers.parseUnits("5000000", 18), // 5M
+            },
+            {
+                token: "0x40f1f5e68d40988c3ee0c1adf972557ae0591014", // PUSD/FRAX
+                limit: ethers.parseUnits("5000000", 18), // 5M
             },
         ],
     },
