@@ -1134,16 +1134,12 @@ contract PositionUtilTest is BaseTest {
         {
             assertEq(liquidationExecutionFeeGot, cfg.liquidationExecutionFee);
             assertEq(state.globalStabilityFund, stabilityFundBefore + 803642878471186030);
-            assertEq(state.protocolFee, protocolFeeBefore + 9333333333333627 + 70318751866228777);
+            assertEq(state.protocolFee, protocolFeeBefore + 7031875186622877 + 70318751866228777);
             assertEq(state.packedState.lpNetSize, 0);
-            assertEq(state.packedState.lpEntryPrice, 30889104785304);
+            assertEq(state.packedState.lpEntryPrice, 31666772192274);
             assertEq(
                 state.packedState.lpLiquidity,
-                packedStateBefore.lpLiquidity +
-                    9333333333333628 +
-                    70318751866228778 -
-                    4112048372652685645 -
-                    1643898676222120072
+                packedStateBefore.lpLiquidity + 819647656012417739 + 7031875186622878 + 70318751866228778
             );
             assertEq(state.packedState.longSize, packedStateBefore.longSize - positionBefore.size);
             IMarketManager.Position memory position = state.longPositions[param.account];
