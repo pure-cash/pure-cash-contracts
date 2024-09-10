@@ -34,6 +34,7 @@ library PositionReader {
         IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
         state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
+        (state.accumulateScaledUSDPnL, state.previousSettledPrice) = marketManager.reviseLiquidityPnLStates(_market);
 
         PUSD pusd = PUSDManagerUtil.deployPUSD();
         pusd.mint(address(this), pusdPosition.totalSupply - _amountIn); // for mock
@@ -116,6 +117,8 @@ library PositionReader {
         IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
         state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
+        (state.accumulateScaledUSDPnL, state.previousSettledPrice) = marketManager.reviseLiquidityPnLStates(_market);
+
         // settle position
         IMarketPosition.Position memory position = marketManager.longPositions(_market, _account);
         if (position.size == 0) revert IMarketErrors.PositionNotFound(_account);

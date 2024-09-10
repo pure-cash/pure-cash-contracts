@@ -41,11 +41,6 @@ interface IMarketManager is
         uint128 lpLiquidity;
         /// @notice The size of the net position held by all LPs
         uint128 lpNetSize;
-        /// @notice The accumulated scaled USD PnL. For saving gas, this value is scaled up
-        /// by 10^(market decimals + price decimals - usd decimals)
-        int184 accumulateScaledUSDPnL;
-        /// @notice The previous settled price
-        uint64 previousSettledPrice;
     }
 
     struct State {
@@ -63,6 +58,11 @@ interface IMarketManager is
         uint128 tokenBalance;
         /// @notice The margin of the global stability fund
         uint256 globalStabilityFund;
+        /// @notice The accumulated scaled USD PnL. For saving gas, this value is scaled up
+        /// by 10^(market decimals + price decimals - usd decimals)
+        int184 accumulateScaledUSDPnL;
+        /// @notice The previous settled price
+        uint64 previousSettledPrice;
     }
 
     /// @notice Emitted when the protocol fee is increased by trading fee
@@ -145,6 +145,12 @@ interface IMarketManager is
     /// @notice Get the information of global stability fund
     /// @param market The target market contract address, such as the contract address of WETH
     function globalStabilityFunds(IERC20 market) external view returns (uint256);
+
+    /// @notice Get the accumulated scaled USD PnL and the previous settled price of the given market
+    /// @param market The target market contract address, such as the contract address of WETH
+    function reviseLiquidityPnLStates(
+        IERC20 market
+    ) external view returns (int184 accumulateScaledUSDPnL, uint64 previousSettledPrice);
 
     /// @notice `Gov` uses the stability fund
     /// @dev The call will fail if the caller is not the `Gov` or the stability fund is insufficient
