@@ -12,14 +12,22 @@ export async function upgrade0903(chainId: bigint) {
     const document = require(`../deployments/${chainId}.json`);
 
     // 1. deploy libraries
-    const {configurableUtil, liquidityUtil, positionReader, liquidityReader} = await deployLibraries(
-        document.deployments.PUSDManagerUtil,
-        document.deployments.PositionUtil,
-    );
+    const {
+        configurableUtil,
+        liquidityUtil,
+        positionReader,
+        liquidityReader,
+        positionUtil,
+        pusdManagerUtil,
+        marketUtil,
+    } = await deployLibraries();
+    document.deployments.PositionUtil = await positionUtil.getAddress();
+    document.deployments.PUSDManagerUtil = await pusdManagerUtil.getAddress();
     document.deployments.ConfigurableUtil = await configurableUtil.getAddress();
     document.deployments.LiquidityUtil = await liquidityUtil.getAddress();
     document.deployments.PositionReader = await positionReader.getAddress();
     document.deployments.LiquidityReader = await liquidityReader.getAddress();
+    document.deployments.MarketUtil = await marketUtil.getAddress();
 
     // 2. deploy reader
     const Reader = await ethers.getContractFactory("Reader", {
@@ -128,7 +136,16 @@ export async function upgrade0903(chainId: bigint) {
     console.log("executeData: ", executeData);
 }
 
-async function deployLibraries(PUSDManagerUtil: string, positionUtil: string) {
+async function deployLibraries() {
+    const PositionUtil = await ethers.getContractFactory("PositionUtil");
+    const positionUtil = await PositionUtil.deploy();
+
+    const PUSDManagerUtil = await ethers.getContractFactory("PUSDManagerUtil");
+    const pusdManagerUtil = await PUSDManagerUtil.deploy();
+
+    const MarketUtil = await ethers.getContractFactory("MarketUtil");
+    const marketUtil = await MarketUtil.deploy();
+
     const ConfigurableUtil = await ethers.getContractFactory("ConfigurableUtil");
     const configurableUtil = await ConfigurableUtil.deploy();
 
@@ -137,25 +154,31 @@ async function deployLibraries(PUSDManagerUtil: string, positionUtil: string) {
 
     const PositionReader = await ethers.getContractFactory("PositionReader", {
         libraries: {
-            PUSDManagerUtil: PUSDManagerUtil,
-            PositionUtil: positionUtil,
+            PUSDManagerUtil: await pusdManagerUtil.getAddress(),
+            PositionUtil: await positionUtil.getAddress(),
         },
     });
     const positionReader = await PositionReader.deploy();
 
     const LiquidityReader = await ethers.getContractFactory("LiquidityReader", {
         libraries: {
-            PUSDManagerUtil: PUSDManagerUtil,
+            PUSDManagerUtil: await pusdManagerUtil.getAddress(),
             LiquidityUtil: await liquidityUtil.getAddress(),
         },
     });
     const liquidityReader = await LiquidityReader.deploy();
 
+    await positionUtil.waitForDeployment();
+    await pusdManagerUtil.waitForDeployment();
+    await marketUtil.waitForDeployment();
     await configurableUtil.waitForDeployment();
     await liquidityUtil.waitForDeployment();
     await positionReader.waitForDeployment();
     await liquidityReader.waitForDeployment();
 
+    console.log(`PusdManagerUtil deployed to: ${await pusdManagerUtil.getAddress()}`);
+    console.log(`PositionUtil deployed to: ${await positionUtil.getAddress()}`);
+    console.log(`marketUtil deployed to: ${await marketUtil.getAddress()}`);
     console.log(`ConfigurableUtil deployed to: ${await configurableUtil.getAddress()}`);
     console.log(`LiquidityPositionUtil deployed to: ${await liquidityUtil.getAddress()}`);
     console.log(`PositionReader deployed to: ${await positionReader.getAddress()}`);
@@ -166,6 +189,9 @@ async function deployLibraries(PUSDManagerUtil: string, positionUtil: string) {
         liquidityUtil,
         positionReader,
         liquidityReader,
+        positionUtil,
+        pusdManagerUtil,
+        marketUtil,
     };
 }
 
