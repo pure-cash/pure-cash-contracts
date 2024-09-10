@@ -84,7 +84,7 @@ library PositionUtil {
             packedState.longSize += _param.sizeDelta;
 
             // settle liquidity
-            LiquidityUtil.settlePosition(packedState, _param.market, LONG, _param.maxIndexPrice, _param.sizeDelta);
+            LiquidityUtil.settlePosition(_state, _param.market, LONG, _param.maxIndexPrice, _param.sizeDelta);
 
             tradingFee = distributeTradingFee(
                 _state,
@@ -173,7 +173,6 @@ library PositionUtil {
                 PUSDManagerUtil.liquidityBufferModuleBurn(
                     _state,
                     _cfg,
-                    packedState,
                     PUSDManagerUtil.LiquidityBufferModuleBurnParam({
                         market: _param.market,
                         account: _param.account,
@@ -193,7 +192,7 @@ library PositionUtil {
             if (sizeAfter == 0) _param.marginDelta = 0;
 
             // settle liquidity
-            LiquidityUtil.settlePosition(packedState, _param.market, SHORT, _param.minIndexPrice, _param.sizeDelta);
+            LiquidityUtil.settlePosition(_state, _param.market, SHORT, _param.minIndexPrice, _param.sizeDelta);
 
             tradingFee = distributeTradingFee(
                 _state,
@@ -215,7 +214,7 @@ library PositionUtil {
                 positionCache.entryPrice,
                 _param.minIndexPrice
             );
-            LiquidityUtil.reviseLiquidityPnL(packedState, _param.market, _param.minIndexPrice, scaledUSDPnL);
+            LiquidityUtil.reviseLiquidityPnL(_state, _param.market, _param.minIndexPrice, scaledUSDPnL);
         }
 
         int256 marginAfter = int256(uint256(positionCache.margin));
@@ -287,28 +286,12 @@ library PositionUtil {
             })
         );
 
-        IMarketManager.PackedState storage packedState = _state.packedState;
-        uint128 lpNetSize = packedState.lpNetSize;
-        if (lpNetSize < positionCache.size)
-            PUSDManagerUtil.liquidityBufferModuleBurn(
-                _state,
-                _cfg,
-                packedState,
-                PUSDManagerUtil.LiquidityBufferModuleBurnParam({
-                    market: _param.market,
-                    account: _param.account,
-                    sizeDelta: uint96(positionCache.size.subU128(lpNetSize)),
-                    indexPrice: _param.maxIndexPrice
-                })
-            );
-
-        liquidationExecutionFee = liquidatePosition(_state, _cfg, packedState, positionCache, _param);
+        liquidationExecutionFee = liquidatePosition(_state, _cfg, positionCache, _param);
     }
 
     function liquidatePosition(
         IMarketManager.State storage _state,
         IConfigurable.MarketConfig storage _cfg,
-        IMarketManager.PackedState storage _packedState,
         IMarketManager.Position memory _positionCache,
         LiquidatePositionParam memory _param
     ) internal returns (uint64 liquidationExecutionFee) {
@@ -322,8 +305,22 @@ library PositionUtil {
             liquidationExecutionFee
         );
 
+        IMarketManager.PackedState storage packedState = _state.packedState;
+        uint128 lpNetSize = packedState.lpNetSize;
+        if (lpNetSize < _positionCache.size)
+            PUSDManagerUtil.liquidityBufferModuleBurn(
+                _state,
+                _cfg,
+                PUSDManagerUtil.LiquidityBufferModuleBurnParam({
+                    market: _param.market,
+                    account: _param.account,
+                    sizeDelta: uint96(_positionCache.size.subU128(lpNetSize)),
+                    indexPrice: liquidationPrice
+                })
+            );
+
         // settle liquidity
-        LiquidityUtil.settlePosition(_packedState, _param.market, SHORT, liquidationPrice, _positionCache.size);
+        LiquidityUtil.settlePosition(_state, _param.market, SHORT, liquidationPrice, _positionCache.size);
         // revise liquidity PnL
         (, int184 scaledUSDPnL) = calcUnrealizedPnL2(
             LONG,
@@ -331,7 +328,7 @@ library PositionUtil {
             _positionCache.entryPrice,
             liquidationPrice
         );
-        LiquidityUtil.reviseLiquidityPnL(_packedState, _param.market, liquidationPrice, scaledUSDPnL);
+        LiquidityUtil.reviseLiquidityPnL(_state, _param.market, liquidationPrice, scaledUSDPnL);
 
         uint96 liquidationFee = calcLiquidationFee(
             _positionCache.size,
@@ -354,7 +351,7 @@ library PositionUtil {
             })
         );
 
-        _packedState.longSize = _packedState.longSize.subU128(_positionCache.size);
+        packedState.longSize = packedState.longSize.subU128(_positionCache.size);
 
         delete _state.longPositions[_param.account];
 

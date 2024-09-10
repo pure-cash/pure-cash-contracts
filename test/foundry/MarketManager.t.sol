@@ -243,9 +243,6 @@ contract MarketManagerTest is BaseTest {
             packedState.lpNetSize,
             packedState.lpEntryPrice
         );
-        console.logString("acc:");
-        console.logInt(packedState.accumulateScaledUSDPnL);
-        console.log("previousSettledPrice: %d", packedState.previousSettledPrice);
         IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(weth);
         console.log("shortSize: %d, shortEntryPrice: %d", pusdPosition.size, pusdPosition.entryPrice);
         IMarketPosition.Position memory alicePosition = marketManager.longPositions(weth, ALICE);
@@ -1325,7 +1322,7 @@ contract MarketManagerTest is BaseTest {
             weth
         );
         assertEq(liquidityBufferModuleBefore.pusdDebt, 59744423153);
-        assertEq(liquidityBufferModuleBefore.tokenPayback, 39936057548207949741);
+        assertEq(liquidityBufferModuleBefore.tokenPayback, 21947043868341977933);
     }
 
     function test_repayLiquidityBufferDebt_passIf_payAmountLessThanPUSDDebt() public {
@@ -1336,17 +1333,17 @@ contract MarketManagerTest is BaseTest {
 
         dealMarketManager(pusd, 100e6);
         vm.expectEmit();
-        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 100e6, 66844829091303402);
+        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 100e6, 36734882872896114);
         uint128 receiveAmount = marketManager.repayLiquidityBufferDebt(weth, CARRIE, CARRIE);
 
-        assertEq(receiveAmount, 66844829091303402);
+        assertEq(receiveAmount, 36734882872896114);
         IMarketManager.LiquidityBufferModule memory liquidityBufferModuleAfter = marketManager.liquidityBufferModules(
             weth
         );
         assertEq(liquidityBufferModuleAfter.pusdDebt, 59744423153 - 100e6);
-        assertEq(liquidityBufferModuleAfter.tokenPayback, 39936057548207949741 - 66844829091303402);
+        assertEq(liquidityBufferModuleAfter.tokenPayback, 21947043868341977933 - 36734882872896114);
         assertEq(pusd.totalSupply(), totalSupplyBefore - 100e6);
-        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 66844829091303402);
+        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 36734882872896114);
     }
 
     function test_repayLiquidityBufferDebt_passIf_payAmountEqualPUSDDebt() public {
@@ -1357,17 +1354,17 @@ contract MarketManagerTest is BaseTest {
 
         dealMarketManager(pusd, 59744423153);
         vm.expectEmit();
-        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 59744423153, 39936057548207949741);
+        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 59744423153, 21947043868341977933);
         uint128 receiveAmount = marketManager.repayLiquidityBufferDebt(weth, CARRIE, CARRIE);
 
-        assertEq(receiveAmount, 39936057548207949741);
+        assertEq(receiveAmount, 21947043868341977933);
         IMarketManager.LiquidityBufferModule memory liquidityBufferModuleAfter = marketManager.liquidityBufferModules(
             weth
         );
         assertEq(liquidityBufferModuleAfter.pusdDebt, 0);
         assertEq(liquidityBufferModuleAfter.tokenPayback, 0);
         assertEq(pusd.totalSupply(), totalSupplyBefore - 59744423153);
-        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 39936057548207949741);
+        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 21947043868341977933);
     }
 
     function test_repayLiquidityBufferDebt_burnPUSDDebtIf_payAmountGreaterThanPUSDDebt() public {
@@ -1378,17 +1375,17 @@ contract MarketManagerTest is BaseTest {
 
         dealMarketManager(pusd, 59744423153 + 100e6);
         vm.expectEmit();
-        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 59744423153, 39936057548207949741);
+        emit IMarketManager.LiquidityBufferModuleDebtRepaid(weth, CARRIE, 59744423153, 21947043868341977933);
         uint128 receiveAmount = marketManager.repayLiquidityBufferDebt(weth, CARRIE, CARRIE);
 
-        assertEq(receiveAmount, 39936057548207949741);
+        assertEq(receiveAmount, 21947043868341977933);
         IMarketManager.LiquidityBufferModule memory liquidityBufferModuleAfter = marketManager.liquidityBufferModules(
             weth
         );
         assertEq(liquidityBufferModuleAfter.pusdDebt, 0);
         assertEq(liquidityBufferModuleAfter.tokenPayback, 0);
         assertEq(pusd.totalSupply(), totalSupplyBefore - 59744423153);
-        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 39936057548207949741);
+        assertEq(marketManager.tokenBalances(weth), tokenBalanceBefore - 21947043868341977933);
     }
 
     function dealMarketManager(IERC20 _market, uint256 _delta) private {

@@ -69,6 +69,14 @@ abstract contract MarketManagerStatesUpgradeable is IMarketManager, Configurable
         return _statesStorage().marketStates[_market].globalStabilityFund;
     }
 
+    /// @inheritdoc IMarketManager
+    function reviseLiquidityPnLStates(
+        IERC20 _market
+    ) external view override returns (int184 accumulateScaledUSDPnL, uint64 previousSettledPrice) {
+        IMarketManager.State storage state = _statesStorage().marketStates[_market];
+        return (state.accumulateScaledUSDPnL, state.previousSettledPrice);
+    }
+
     function pusd() external view returns (address) {
         return PUSDManagerUtil.computePUSDAddress();
     }

@@ -795,7 +795,7 @@ contract PUSDManagerUtilTest is BaseTest {
             31681133114,
             12491250000000197140
         );
-        PUSDManagerUtil.liquidityBufferModuleBurn(state, cfg, state.packedState, param);
+        PUSDManagerUtil.liquidityBufferModuleBurn(state, cfg, param);
         {
             assertEq(state.protocolFee, protocolFeeBefore + 4375000000000069);
             assertEq(state.packedState.lpLiquidity, packedStateBefore.lpLiquidity + 4375000000000069);
