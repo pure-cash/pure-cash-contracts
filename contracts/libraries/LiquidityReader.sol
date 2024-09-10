@@ -75,6 +75,7 @@ library LiquidityReader {
         IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
         state.globalPUSDPosition = pusdPosition;
         state.tokenBalance = marketManager.tokenBalances(_market);
+        (state.accumulateScaledUSDPnL, state.previousSettledPrice) = marketManager.reviseLiquidityPnLStates(_market);
 
         PUSD pusd = PUSDManagerUtil.deployPUSD();
         pusd.mint(address(this), pusdPosition.totalSupply - _amountIn); // for mock
@@ -131,6 +132,7 @@ library LiquidityReader {
         IPUSDManager.GlobalPUSDPosition memory pusdPosition = marketManager.globalPUSDPositions(_market);
         state.globalPUSDPosition = marketManager.globalPUSDPositions(_market);
         state.tokenBalance = marketManager.tokenBalances(_market);
+        (state.accumulateScaledUSDPnL, state.previousSettledPrice) = marketManager.reviseLiquidityPnLStates(_market);
 
         uint256 totalSupply = ILPToken(LiquidityUtil.computeLPTokenAddress(_market, address(marketManager)))
             .totalSupply();

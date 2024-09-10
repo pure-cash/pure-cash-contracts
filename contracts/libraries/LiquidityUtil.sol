@@ -168,13 +168,14 @@ library LiquidityUtil {
     }
 
     function settlePosition(
-        IMarketManager.PackedState storage _packedState,
+        IMarketManager.State storage _state,
         IERC20 _market,
         Side _side,
         uint64 _indexPrice,
         uint96 _sizeDelta
     ) internal {
-        (uint128 netSize, uint64 entryPrice) = (_packedState.lpNetSize, _packedState.lpEntryPrice);
+        IMarketManager.PackedState storage packedState = _state.packedState;
+        (uint128 netSize, uint64 entryPrice) = (packedState.lpNetSize, packedState.lpEntryPrice);
         unchecked {
             if (_side.isLong()) {
                 uint64 entryPriceAfter = PositionUtil.calcNextEntryPrice(
@@ -184,8 +185,8 @@ library LiquidityUtil {
                     _sizeDelta,
                     _indexPrice
                 );
-                _packedState.lpNetSize = netSize + _sizeDelta;
-                _packedState.lpEntryPrice = entryPriceAfter;
+                packedState.lpNetSize = netSize + _sizeDelta;
+                packedState.lpEntryPrice = entryPriceAfter;
                 emit IMarketLiquidity.GlobalLiquiditySettled(_market, int256(uint256(_sizeDelta)), 0, entryPriceAfter);
             } else {
                 (int184 tokenPnL, int184 scaledUSDPnL) = PositionUtil.calcUnrealizedPnL2(
@@ -194,10 +195,8 @@ library LiquidityUtil {
                     entryPrice,
                     _indexPrice
                 );
-                _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + tokenPnL)
-                    .toUint256()
-                    .toUint128();
-                _packedState.lpNetSize = netSize - _sizeDelta;
+                packedState.lpLiquidity = (int256(uint256(packedState.lpLiquidity)) + tokenPnL).toUint256().toUint128();
+                packedState.lpNetSize = netSize - _sizeDelta;
 
                 emit IMarketLiquidity.GlobalLiquiditySettled(
                     _market,
@@ -206,19 +205,19 @@ library LiquidityUtil {
                     entryPrice
                 );
 
-                reviseLiquidityPnL(_packedState, _market, _indexPrice, scaledUSDPnL);
+                reviseLiquidityPnL(_state, _market, _indexPrice, scaledUSDPnL);
             }
         }
     }
 
     function reviseLiquidityPnL(
-        IMarketManager.PackedState storage _packedState,
+        IMarketManager.State storage _state,
         IERC20 _market,
         uint64 _indexPrice,
         int184 _scaledUSDPnL
     ) internal returns (int256 revisedTokenPnL) {
-        int184 accumulateScaledUSDPnL = _packedState.accumulateScaledUSDPnL;
-        uint64 previousSettledPrice = _packedState.previousSettledPrice;
+        int184 accumulateScaledUSDPnL = _state.accumulateScaledUSDPnL;
+        uint64 previousSettledPrice = _state.previousSettledPrice;
         if (previousSettledPrice > 0) {
             unchecked {
                 int256 priceDiff = int256(uint256(previousSettledPrice)) - int256(uint256(_indexPrice));
@@ -227,12 +226,12 @@ library LiquidityUtil {
                     ? priceDiff / int256(uint256(_indexPrice) * previousSettledPrice)
                     : -int256(Math.ceilDiv(uint256(-priceDiff), uint256(_indexPrice) * previousSettledPrice));
             }
-            _packedState.lpLiquidity = (int256(uint256(_packedState.lpLiquidity)) + revisedTokenPnL)
+            _state.packedState.lpLiquidity = (int256(uint256(_state.packedState.lpLiquidity)) + revisedTokenPnL)
                 .toUint256()
                 .toUint128();
         }
-        _packedState.previousSettledPrice = _indexPrice;
-        _packedState.accumulateScaledUSDPnL = accumulateScaledUSDPnL + _scaledUSDPnL;
+        _state.previousSettledPrice = _indexPrice;
+        _state.accumulateScaledUSDPnL = accumulateScaledUSDPnL + _scaledUSDPnL;
 
         emit IMarketLiquidity.GlobalLiquidityPnLRevised(_market, _indexPrice, _scaledUSDPnL, revisedTokenPnL);
     }

@@ -128,7 +128,7 @@ library PUSDManagerUtil {
         }
 
         // settle liquidity
-        LiquidityUtil.settlePosition(packedState, _param.market, SHORT, _param.indexPrice, sizeDelta);
+        LiquidityUtil.settlePosition(_state, _param.market, SHORT, _param.indexPrice, sizeDelta);
 
         uint96 tradingFee = PositionUtil.distributeTradingFee(
             _state,
@@ -235,7 +235,7 @@ library PUSDManagerUtil {
         validateDecreaseSize(packedState, _cfg.maxBurningRate, sizeDelta);
 
         // settle liquidity
-        LiquidityUtil.settlePosition(packedState, _param.market, LONG, _param.indexPrice, sizeDelta);
+        LiquidityUtil.settlePosition(_state, _param.market, LONG, _param.indexPrice, sizeDelta);
 
         uint96 tradingFee = PositionUtil.distributeTradingFee(
             _state,
@@ -259,7 +259,7 @@ library PUSDManagerUtil {
             positionCache.entryPrice,
             _param.indexPrice
         );
-        LiquidityUtil.reviseLiquidityPnL(packedState, _param.market, _param.indexPrice, scaledUSDPnL);
+        LiquidityUtil.reviseLiquidityPnL(_state, _param.market, _param.indexPrice, scaledUSDPnL);
 
         if (_param.exactIn) {
             unchecked {
@@ -317,11 +317,10 @@ library PUSDManagerUtil {
     function liquidityBufferModuleBurn(
         IMarketManager.State storage _state,
         IConfigurable.MarketConfig storage _cfg,
-        IMarketManager.PackedState storage _packedState,
         LiquidityBufferModuleBurnParam memory _param
     ) internal {
         // settle liquidity
-        LiquidityUtil.settlePosition(_packedState, _param.market, LONG, _param.indexPrice, _param.sizeDelta);
+        LiquidityUtil.settlePosition(_state, _param.market, LONG, _param.indexPrice, _param.sizeDelta);
 
         IPUSDManager.GlobalPUSDPosition storage position = _state.globalPUSDPosition;
         IPUSDManager.GlobalPUSDPosition memory positionCache = position;
@@ -344,7 +343,7 @@ library PUSDManagerUtil {
             positionCache.entryPrice,
             _param.indexPrice
         );
-        LiquidityUtil.reviseLiquidityPnL(_packedState, _param.market, _param.indexPrice, scaledUSDPnL);
+        LiquidityUtil.reviseLiquidityPnL(_state, _param.market, _param.indexPrice, scaledUSDPnL);
 
         uint96 receiveAmount;
         uint64 pusdDebtDelta;
