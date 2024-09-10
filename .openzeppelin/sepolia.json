@@ -2,21 +2,21 @@
   "manifestVersion": "3.2",
   "proxies": [
     {
-      "address": "0x6ffF4e2156c97546628e6D21a8e20aE84402B300",
+      "address": "0x0bCd01f08001A81c8FFBf10De3B9Ae2A40d3720d",
       "kind": "uups"
     },
     {
-      "address": "0x76194F028932Ff41d965605B300ec19d54455532",
+      "address": "0xB402d1A22519Bb88E41D280c884ad10255896108",
       "kind": "uups"
     },
     {
-      "address": "0x74D041b2dDBF69e3091935FB538EFEdc96f44348",
+      "address": "0x2Bea52BC3F018f7419488174B2E0d64f5e391f65",
       "kind": "uups"
     }
   ],
   "impls": {
     "0254d56bbb0bb3d0394c08053ff699377da28f04e8b00121d42226fc30fb8ab2": {
-      "address": "0x0967c9e1AbeBBF264c417d2B145aC99a96EA74b8",
+      "address": "0xF10bFaCe429E777837Eedf739af477AEf7BB5ED1",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [
@@ -176,7 +176,7 @@
       }
     },
     "acf3a3d9724c65720e71dc7eb74d21719dfcde6045d68fe97767a565bc673121": {
-      "address": "0x57a1cCE5A76a5756b21eAbf37384b52822A4Cb37",
+      "address": "0xA536D95249E1ceC184E59613B34DBbf4998F2295",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [
@@ -311,8 +311,8 @@
         }
       }
     },
-    "df5a76eb8ecd8b361bf72ba62275c001a04b798476b9696357dff0a58597dc04": {
-      "address": "0x4fbeaE46dF6837193779a72CE256C7978d358d54",
+    "f86309baf6f70fe093777194ab332cc4af8e66056bfdd003bfc1432e24791077": {
+      "address": "0xe66971813021779633a9c779b931226AA19a1643",
       "layout": {
         "solcVersion": "0.8.26",
         "storage": [],
