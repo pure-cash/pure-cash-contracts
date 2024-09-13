@@ -196,6 +196,7 @@ export const networks = {
                     riskFreeTime: 3600,
                     stableCoinSupplyCap: BigInt(5e7) * 10n ** 6n,
                     maxShortSizeRate: parsePercent("20%"),
+                    maxSizeRatePerPosition: parsePercent("10%"),
                 },
             },
             // {
