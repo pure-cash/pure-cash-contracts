@@ -18,7 +18,7 @@ library PUSDManagerUtil {
     using UnsafeMath for *;
 
     bytes32 internal constant PUSD_SALT = keccak256("Pure USD");
-    bytes32 internal constant PUSD_INIT_CODE_HASH = 0x833a3129a7c49096ba2bc346ab64e2bbec674f4181bf8e6dedfa83aea7fb0fec;
+    bytes32 internal constant PUSD_INIT_CODE_HASH = keccak256(type(PUSD).creationCode);
 
     struct MintParam {
         IERC20 market;

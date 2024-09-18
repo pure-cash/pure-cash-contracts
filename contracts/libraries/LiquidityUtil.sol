@@ -14,8 +14,7 @@ library LiquidityUtil {
     using SafeCast for *;
     using UnsafeMath for *;
 
-    bytes32 internal constant LP_TOKEN_INIT_CODE_HASH =
-        0xf7ee18f8779e8a47b9fee2bf37816783fe8615833733cf03cc48cd8fc3e3128b;
+    bytes32 internal constant LP_TOKEN_INIT_CODE_HASH = keccak256(type(LPToken).creationCode);
 
     struct MintParam {
         IERC20 market;
